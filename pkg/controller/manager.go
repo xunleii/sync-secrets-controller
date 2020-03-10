@@ -2,6 +2,7 @@ package controller
 
 import (
 	gocontext "context"
+	"net/http"
 	"sync"
 	"time"
 
@@ -36,29 +37,34 @@ type (
 
 	Controller struct {
 		context
+		metricsBindAddress     string
+		healthProbeBindAddress string
 	}
 )
 
-func NewController(ignoredNamespaces []string) *Controller {
+func NewController(metricsBindAddress, healthProbeBindAddress string, ignoredNamespaces []string) *Controller {
 	return &Controller{
 		context: context{
 			ignoredNamespaces: ignoredNamespaces,
 		},
+		metricsBindAddress:     metricsBindAddress,
+		healthProbeBindAddress: healthProbeBindAddress,
 	}
 }
 
 func (c *Controller) Run(stop <-chan struct{}) {
 	mgr, err := manager.New(kconfig.GetConfigOrDie(), manager.Options{
-		//MetricsBindAddress:    "",
-		//ReadinessEndpointName: "/-/readyz",
-		//LivenessEndpointName:  "/-/healthz",
+		MetricsBindAddress:     c.metricsBindAddress,
+		HealthProbeBindAddress: c.healthProbeBindAddress,
+		ReadinessEndpointName:  "/-/readyz",
+		LivenessEndpointName:   "/-/healthz",
 	})
 	if err != nil {
-		klog.Fatalf("unable to set up overall controller manager: %s", err)
+		klog.Fatalf("Unable to set up overall controller manager: %s", err)
 	}
 
-	//_ = mgr.AddReadyzCheck("readyz", func(req *http.Request) error { return nil })
-	//_ = mgr.AddHealthzCheck("healthz", func(req *http.Request) error { return nil })
+	_ = mgr.AddReadyzCheck("readyz", func(req *http.Request) error { return nil })
+	_ = mgr.AddHealthzCheck("healthz", func(req *http.Request) error { return nil })
 
 	secretCtrl, err := controller.New("sync-secrets", mgr, controller.Options{
 		Reconciler: &reconcileSecrets{context: &c.context, client: mgr.GetClient()},
@@ -96,7 +102,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 
 	err = mgr.Start(stop)
 	if err != nil {
-		panic(err)
+		klog.Fatalf("Failed to run overall controller manager: %s", err)
 	}
 }
 
