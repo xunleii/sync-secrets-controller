@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	controllerName = "sync-secrets-operator"
+	controllerName = "controller"
 	controllerNameMetric = "sync_secrets_operator"
 )
 
@@ -24,7 +24,7 @@ func main() {
 
 	pflag.StringVar(&metricsBindAddress, "metrics-bind-address", ":8080", "Address to bind to access to the metrics")
 	pflag.StringVar(&healthProbeBindAddress, "health-probe-bind-address", ":8081", "Address to bind to access to health probes")
-	pflag.StringSliceVar(&ignoreNamespaces, "ignore-namespace", nil, "List of namespaces to be ignored by the controller")
+	pflag.StringSliceVar(&ignoreNamespaces, "ignore-namespaces", nil, "List of namespaces to be ignored by the controller")
 
 	logs.InitLogs()
 	kflag.InitFlags()
