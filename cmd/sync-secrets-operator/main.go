@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	controllerName = "sync-secrets-controller"
-	controllerNameMetric = "sync_secrets_controller"
+	controllerName = "sync-secrets-operator"
+	controllerNameMetric = "sync_secrets_operator"
 )
 
 func main() {
