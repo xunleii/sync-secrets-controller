@@ -46,6 +46,15 @@ endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
 
+.PHONY: e2e
+e2e:
+	$(MAKE) -C test e2e
+
+e2e_locally:
+	$(MAKE) -C test kind_setup
+	$(MAKE) -C test e2e
+	$(MAKE) -C test kind_cleanup
+
 .PHONY: promtool
 promtool: $(PROMTOOL)
 
