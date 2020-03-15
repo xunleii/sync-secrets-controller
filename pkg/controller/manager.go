@@ -67,7 +67,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	_ = mgr.AddHealthzCheck("healthz", func(req *http.Request) error { return nil })
 
 	secretCtrl, err := controller.New("sync-secrets", mgr, controller.Options{
-		Reconciler: &reconcileSecrets{context: &c.context, client: mgr.GetClient()},
+		Reconciler: &reconcileSecret{context: &c.context, client: mgr.GetClient()},
 	})
 	if err != nil {
 		klog.Fatalf("Unable to set up individual controller (sync-secrets): %s", err)

@@ -3,6 +3,7 @@ package controller
 import (
 	gocontext "context"
 	"strings"
+	"sync"
 
 	"github.com/thoas/go-funk"
 	corev1 "k8s.io/api/core/v1"
@@ -14,12 +15,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type reconcileSecrets struct {
+type reconcileSecret struct {
 	*context
 	client client.Client
 }
 
-func (r *reconcileSecrets) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+func (r *reconcileSecret) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	secret := &corev1.Secret{}
 	err := r.client.Get(gocontext.TODO(), req.NamespacedName, secret)
 	if errors.IsNotFound(err) {
@@ -93,4 +94,16 @@ func (r *reconcileSecrets) Reconcile(req reconcile.Request) (reconcile.Result, e
 	}
 
 	return reconcile.Result{}, nil
+}
+func (r *reconcileSecret) DeepCopy() *reconcileSecret {
+	var owners sync.Map
+	var ignoredNamespaces []string
+
+	r.owners.Range(func(key, value interface{}) bool { owners.Store(key, value); return true })
+	copy(ignoredNamespaces, r.ignoredNamespaces)
+
+	return &reconcileSecret{
+		context: &context{owners: owners, ignoredNamespaces: ignoredNamespaces},
+		client:  r.client,
+	}
 }
