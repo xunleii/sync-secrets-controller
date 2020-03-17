@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	controllerName = "controller"
+	controllerName       = "controller"
 	controllerNameMetric = "sync_secrets_operator"
 )
 

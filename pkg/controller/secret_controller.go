@@ -43,11 +43,11 @@ func (r *reconcileSecret) Reconcile(req reconcile.Request) (reconcile.Result, er
 
 	var options []client.ListOption
 	switch {
-	case allExists == false && selectorExists == false:
+	case !allExists && !selectorExists:
 		klog.V(5).Infof("Annotation not found on %T %s, request ignored", secret, req)
 		// TODO(ani): remove synced secrets if req is in the owner table
 		return reconcile.Result{}, nil
-	case allExists == true && selectorExists == true:
+	case allExists && selectorExists:
 		klog.Errorf("Invalid annotations on %T %s: annotations %s and %s cannot be used together", secret, req, allNamespacesAnnotation, namespaceSelectorAnnotation)
 		// TODO(ani): remove synced secrets if req is in the owner table
 		return reconcile.Result{}, nil

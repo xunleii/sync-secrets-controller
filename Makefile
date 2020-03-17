@@ -65,3 +65,7 @@ $(PROMTOOL):
 	cp $(PROMTOOL_TMP)/prometheus-$(PROMTOOL_VERSION).$(GO_BUILD_PLATFORM)/promtool $(FIRST_GOPATH)/bin/promtool
 	rm -r $(PROMTOOL_TMP)
 
+
+.PHONY: common-check_license
+common-check_license:
+	@echo -n # ignore license checking
