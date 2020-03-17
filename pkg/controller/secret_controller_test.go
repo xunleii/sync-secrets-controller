@@ -1,67 +1,27 @@
 package controller
 
 import (
-	ctx "context"
+	gocontext "context"
 	"encoding/base64"
-	"flag"
-	"io/ioutil"
-	"testing"
+	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/thoas/go-funk"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-)
-
-func init() {
-	fset := flag.NewFlagSet("ignore_logs", flag.ExitOnError)
-	klog.SetOutput(ioutil.Discard)
-	klog.InitFlags(fset)
-
-	_ = fset.Parse([]string{"-logtostderr=false", "-alsologtostderr=false", "-stderrthreshold=10"})
-}
-
-func TestReconcileSecret(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "")
-}
-
-var (
-	IgnoreOwner = func(owner corev1.Secret) func([]corev1.Secret) []corev1.Secret {
-		return func(secrets []corev1.Secret) []corev1.Secret {
-			return funk.Filter(secrets, func(secret corev1.Secret) bool { return secret.UID != owner.UID }).([]corev1.Secret)
-		}
-	}
-	GetNames = func(secrets []corev1.Secret) []string {
-		return funk.Map(secrets, func(secret corev1.Secret) string { return secret.Name }).([]string)
-	}
-	GetNamespaces = func(secrets []corev1.Secret) []string {
-		return funk.Map(secrets, func(secret corev1.Secret) string { return secret.Namespace }).([]string)
-	}
-	GetAnnotations = func(secrets []corev1.Secret) []map[string]string {
-		return funk.Map(secrets, func(secret corev1.Secret) map[string]string { return secret.Annotations }).([]map[string]string)
-	}
-	GetLabels = func(secrets []corev1.Secret) []map[string]string {
-		return funk.Map(secrets, func(secret corev1.Secret) map[string]string { return secret.Labels }).([]map[string]string)
-	}
-	GetOwnerReferences = func(secrets []corev1.Secret) [][]metav1.OwnerReference {
-		return funk.Map(secrets, func(secret corev1.Secret) []metav1.OwnerReference { return secret.OwnerReferences }).([][]metav1.OwnerReference)
-	}
 )
 
 var (
 	setupSpecs = func(client *client.Client, controller *reconcileSecret) (*corev1.Secret, []metav1.OwnerReference) {
 		var (
 			owner = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "shared-owner", Namespace: "default", UID: uuid.NewUUID()},
+				ObjectMeta: metav1.ObjectMeta{Name: "shared-secret", Namespace: "default", UID: uuid.NewUUID()},
 				Data:       map[string][]byte{"owner": []byte(base64.StdEncoding.EncodeToString([]byte("the-owner-value")))},
 			}
 			ownerReferences = []metav1.OwnerReference{
@@ -70,18 +30,18 @@ var (
 		)
 
 		*client = fake.NewFakeClientWithScheme(scheme.Scheme)
-		*controller = reconcileSecret{context: &context{}, client: *client}
+		*controller = reconcileSecret{context: &context{owners: &sync.Map{}}, client: *client}
 
 		It("must create default namespaces", func() {
 			namespaces := []string{"kube-system", "kube-public", "default"}
 			for _, namespace := range namespaces {
-				Expect((*client).Create(ctx.TODO(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})).
+				Expect((*client).Create(gocontext.TODO(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})).
 					To(Succeed())
 			}
 		})
 
 		It("must create original secret", func() {
-			Expect((*client).Create(ctx.TODO(), owner)).To(Succeed())
+			Expect((*client).Create(gocontext.TODO(), owner)).To(Succeed())
 		})
 
 		return owner, ownerReferences
@@ -89,7 +49,7 @@ var (
 	reconcileUpdatedSecret = func(client client.Client, controller *reconcileSecret, owner *corev1.Secret) {
 		ownerRequest := reconcile.Request{NamespacedName: types.NamespacedName{Name: owner.Name, Namespace: owner.Namespace}}
 
-		Expect(client.Update(ctx.TODO(), owner)).To(Succeed())
+		Expect(client.Update(gocontext.TODO(), owner)).To(Succeed())
 		res, err := controller.Reconcile(ownerRequest)
 		Expect(res).Should(Equal(reconcile.Result{}))
 		Expect(err).Should(Succeed())
@@ -104,7 +64,7 @@ var (
 		It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 		It("should contain only one secret", func() {
 			secrets := &corev1.SecretList{}
-			Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+			Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 			Expect(secrets.Items).Should(HaveLen(1))
 		})
 	})
@@ -121,7 +81,7 @@ var (
 		It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 		It("should contain only one secret", func() {
 			secrets := &corev1.SecretList{}
-			Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+			Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 			Expect(secrets.Items).Should(HaveLen(1))
 		})
 	})
@@ -138,7 +98,7 @@ var (
 			It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 			It("should contain one secret & zero replicated secret", func() {
 				secrets := &corev1.SecretList{}
-				Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+				Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 				Expect(secrets.Items).Should(HaveLen(1))
 				Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), HaveLen(0)))
 			})
@@ -151,7 +111,7 @@ var (
 			It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 			It("should contain three secrets & two replicated secrets", func() {
 				secrets := &corev1.SecretList{}
-				Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+				Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 				Expect(secrets.Items).Should(HaveLen(3))
 				Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
 					WithTransform(GetNames, ConsistOf(owner.Name, owner.Name)),
@@ -168,7 +128,7 @@ var (
 					expectedAnnotations := map[string]string{"foo": "bar"}
 					secrets := &corev1.SecretList{}
 
-					Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 					Expect(secrets.Items).Should(HaveLen(3))
 					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
 						WithTransform(GetNames, ConsistOf(owner.Name, owner.Name)),
@@ -186,7 +146,7 @@ var (
 					expectedLabels := map[string]string{"foo": "bar"}
 					secrets := &corev1.SecretList{}
 
-					Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 					Expect(secrets.Items).Should(HaveLen(3))
 					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
 						WithTransform(GetNames, ConsistOf(owner.Name, owner.Name)),
@@ -206,7 +166,7 @@ var (
 					Skip("removing mechanism is not implemented")
 
 					secrets := &corev1.SecretList{}
-					Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 					Expect(secrets.Items).Should(HaveLen(2))
 					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
 						WithTransform(GetNames, ConsistOf(owner.Name)),
@@ -229,7 +189,7 @@ var (
 				})
 
 				It("should remove the secret", func() {
-					Expect(client.Delete(ctx.TODO(), owner)).To(Succeed())
+					Expect(client.Delete(gocontext.TODO(), owner)).To(Succeed())
 					res, err := controller.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: owner.Namespace, Name: owner.Name}})
 					Expect(err).Should(Succeed())
 					Expect(res).Should(Equal(reconcile.Result{}))
@@ -254,7 +214,7 @@ var (
 
 			assertNoReplicatedSecret := func() {
 				secrets := &corev1.SecretList{}
-				Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+				Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 				Expect(secrets.Items).Should(HaveLen(1))
 				Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), HaveLen(0)))
 			}
@@ -283,7 +243,7 @@ var (
 			owner.Annotations = map[string]string{namespaceSelectorAnnotation: "need-shared-secret=true"}
 
 			It("must update 'kube-public' namespace", func() {
-				Expect(client.Update(ctx.TODO(), &corev1.Namespace{
+				Expect(client.Update(gocontext.TODO(), &corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "kube-public",
 						Labels: map[string]string{"need-shared-secret": "true"},
@@ -294,7 +254,7 @@ var (
 			It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 			It("should contain two secrets & one replicated secrets", func() {
 				secrets := &corev1.SecretList{}
-				Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+				Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 				Expect(secrets.Items).Should(HaveLen(2))
 				Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
 					WithTransform(GetNames, ConsistOf(owner.Name)),
@@ -311,7 +271,7 @@ var (
 					expectedAnnotations := map[string]string{"foo": "bar"}
 					secrets := &corev1.SecretList{}
 
-					Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 					Expect(secrets.Items).Should(HaveLen(2))
 					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
 						WithTransform(GetNames, ConsistOf(owner.Name)),
@@ -329,7 +289,7 @@ var (
 					expectedLabels := map[string]string{"foo": "bar"}
 					secrets := &corev1.SecretList{}
 
-					Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 					Expect(secrets.Items).Should(HaveLen(2))
 					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
 						WithTransform(GetNames, ConsistOf(owner.Name)),
@@ -349,7 +309,7 @@ var (
 					Skip("removing mechanism is not implemented")
 
 					secrets := &corev1.SecretList{}
-					Expect(client.List(ctx.TODO(), secrets)).To(Succeed())
+					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
 					Expect(secrets.Items).Should(HaveLen(1))
 					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), HaveLen(0)))
 				})

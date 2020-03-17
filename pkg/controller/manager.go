@@ -32,7 +32,7 @@ const (
 type (
 	context struct {
 		ignoredNamespaces []string
-		owners            sync.Map
+		owners            *sync.Map
 	}
 
 	Controller struct {
@@ -46,6 +46,7 @@ func NewController(metricsBindAddress, healthProbeBindAddress string, ignoredNam
 	return &Controller{
 		context: context{
 			ignoredNamespaces: ignoredNamespaces,
+			owners:            &sync.Map{},
 		},
 		metricsBindAddress:     metricsBindAddress,
 		healthProbeBindAddress: healthProbeBindAddress,
@@ -151,4 +152,14 @@ func copySecret(client client.Client, owner *corev1.Secret, target types.Namespa
 		return err
 	}
 	return nil
+}
+
+func (ctx context) DeepCopy() *context {
+	var owners sync.Map
+	var ignoredNamespaces []string
+
+	ctx.owners.Range(func(key, value interface{}) bool { owners.Store(key, value); return true })
+	copy(ignoredNamespaces, ctx.ignoredNamespaces)
+
+	return &context{owners: &owners, ignoredNamespaces: ignoredNamespaces}
 }

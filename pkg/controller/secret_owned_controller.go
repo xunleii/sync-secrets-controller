@@ -42,7 +42,6 @@ func (r *reconcileOwnedSecret) Reconcile(req reconcile.Request) (reconcile.Resul
 	}
 	klog.V(4).Infof("%s is owner of %s", ownerRef, req)
 
-
 	owner := &corev1.Secret{}
 	err = r.client.Get(gocontext.TODO(), ownerRef.(types.NamespacedName), owner)
 	if errors.IsNotFound(err) {
@@ -57,3 +56,9 @@ func (r *reconcileOwnedSecret) Reconcile(req reconcile.Request) (reconcile.Resul
 	return reconcile.Result{}, nil
 }
 
+func (r *reconcileOwnedSecret) DeepCopy() *reconcileOwnedSecret {
+	return &reconcileOwnedSecret{
+		context: r.context.DeepCopy(),
+		client:  r.client,
+	}
+}

@@ -3,7 +3,6 @@ package controller
 import (
 	gocontext "context"
 	"strings"
-	"sync"
 
 	"github.com/thoas/go-funk"
 	corev1 "k8s.io/api/core/v1"
@@ -95,15 +94,10 @@ func (r *reconcileSecret) Reconcile(req reconcile.Request) (reconcile.Result, er
 
 	return reconcile.Result{}, nil
 }
+
 func (r *reconcileSecret) DeepCopy() *reconcileSecret {
-	var owners sync.Map
-	var ignoredNamespaces []string
-
-	r.owners.Range(func(key, value interface{}) bool { owners.Store(key, value); return true })
-	copy(ignoredNamespaces, r.ignoredNamespaces)
-
 	return &reconcileSecret{
-		context: &context{owners: owners, ignoredNamespaces: ignoredNamespaces},
+		context: r.context.DeepCopy(),
 		client:  r.client,
 	}
 }
