@@ -1,0 +1,97 @@
+project_name: sync-secrets-operator
+before:
+  hooks:
+    - go mod download
+builds:
+- id: controller
+  env:
+  - CGO_ENABLED=0
+
+  main: cmd/controller/main.go
+  binary: controller
+  goos:
+  - linux
+  goarch:
+  - amd64
+  - arm
+  - arm64
+  goarm:
+  - 7
+  ldflags:
+  - -s
+  - -X github.com/prometheus/common/version.Version={{.Version}}
+  - -X github.com/prometheus/common/version.Revision={{.FullCommit}}
+  - -X github.com/prometheus/common/version.Branch={{.Env.branch}}
+  - -X github.com/prometheus/common/version.BuildUser={{.Env.user}}@{{.Env.host}}
+  - -X github.com/prometheus/common/version.BuildDate={{.Date}}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+
+dockers:
+- &build-docker
+  goos: linux
+  goarch: amd64
+
+  builds: [controller]
+  binaries: [controller]
+  dockerfile: Dockerfile
+
+  image_templates:
+  - "quay.io/klst.pw/sync-secrets-operator:{{ .Tag }}-linux_amd64"
+  - "quay.io/klst.pw/sync-secrets-operator:v{{ .Major }}-linux_amd64"
+  - "quay.io/klst.pw/sync-secrets-operator:v{{ .Major }}.{{ .Minor }}-linux_amd64"
+
+  build_flag_templates:
+  - "--pull"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+
+  - "--build-arg=OS=linux"
+  - "--build-arg=ARCH=amd64"
+
+  extra_files:
+  - LICENSE
+
+- <<: *build-docker
+  goos: linux
+  goarch: arm
+  goarm: 7
+
+  image_templates:
+  - "quay.io/klst.pw/sync-secrets-operator:{{ .Tag }}-linux_armv7"
+  - "quay.io/klst.pw/sync-secrets-operator:v{{ .Major }}-linux_armv7"
+  - "quay.io/klst.pw/sync-secrets-operator:v{{ .Major }}.{{ .Minor }}-linux_armv7"
+
+  build_flag_templates:
+  - "--pull"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+  - "--build-arg=OS=linux"
+  - "--build-arg=ARCH=armv7"
+
+- <<: *build-docker
+  goos: linux
+  goarch: arm64
+
+  image_templates:
+  - "quay.io/klst.pw/sync-secrets-operator:{{ .Tag }}-linux_arm64"
+  - "quay.io/klst.pw/sync-secrets-operator:v{{ .Major }}-linux_arm64"
+  - "quay.io/klst.pw/sync-secrets-operator:v{{ .Major }}.{{ .Minor }}-linux_arm64"
+
+  build_flag_templates:
+  - "--pull"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+  - "--build-arg=OS=linux"
+  - "--build-arg=ARCH=arm64"
