@@ -1,0 +1,54 @@
+name: GoReleaser (unreleased)
+on: 
+  push:
+    branches:
+      - master
+
+jobs:
+  changelog-unreleased:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Git Unshallow
+      run: git fetch --unshallow --tags
+    - name: Setup Go environment
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+    - name: Update changelog
+      env:
+        GOPATH: /opt/go
+      run: |
+        go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
+        ${GOPATH}/bin/git-chglog -o CHANGELOG.md
+
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add CHANGELOG.md
+        git commit -m "Update CHANGELOG.md" CHANGELOG.md
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  goreleaser-snapshot:
+    needs: changelog-unreleased
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Go environment
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+    - name: Run GoReleaser
+      uses: goreleaser/goreleaser-action@v1
+      with:
+        version: latest
+        args: release --rm-dist --snapshot
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+        GH_BRANCH: ${{ github.ref }}
+        GH_USER: ${{ github.actor }}
+        GH_HOST: github_action

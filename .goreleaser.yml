@@ -21,16 +21,9 @@ builds:
   - -s
   - -X github.com/prometheus/common/version.Version={{.Version}}
   - -X github.com/prometheus/common/version.Revision={{.FullCommit}}
-  - -X github.com/prometheus/common/version.Branch={{.Env.branch}}
-  - -X github.com/prometheus/common/version.BuildUser={{.Env.user}}@{{.Env.host}}
+  - -X github.com/prometheus/common/version.Branch={{.Env.GH_BRANCH}}
+  - -X github.com/prometheus/common/version.BuildUser={{.Env.GH_USER}}@{{.Env.GH_HOST}}
   - -X github.com/prometheus/common/version.BuildDate={{.Date}}
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-    - '^docs:'
-    - '^test:'
 
 dockers:
 - &build-docker
