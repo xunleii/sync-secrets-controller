@@ -1,0 +1,79 @@
+name: GoReleaser
+on: 
+  push:
+    tags:
+    - v*
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Git Unshallow
+      run: git fetch --unshallow --tags
+    - name: Setup Go environment
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+    - name: Update changelog
+      env:
+        GOPATH: /opt/go
+      run: |
+        go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
+        ${GOPATH}/bin/git-chglog -o CHANGELOG.md
+
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add CHANGELOG.md
+        git commit -m "Update CHANGELOG.md" CHANGELOG.md
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  goreleaser:
+    needs: changelog
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Go environment
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+    - uses: azure/docker-login@v1
+      with:
+        login-server: quay.io
+        username: ${{ secrets.QUAY_USER }}
+        password: ${{ secrets.QUAY_PASSWORD }}
+    - name: Run GoReleaser
+      uses: goreleaser/goreleaser-action@v1
+      with:
+        version: latest
+        args: release --rm-dist
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+        GH_BRANCH: ${{ github.ref }}
+        GH_USER: ${{ github.actor }}
+        GH_HOST: github_action
+    - name: Release docker manifests
+      env:
+        DOCKER_CLI_EXPERIMENTAL: enabled
+      run: |
+        export FULL_TAG=${GITHUB_REF##*/}
+        docker manifest create quay.io/klst.pw/sync-secrets-operator:${FULL_TAG} \
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_armv7 \
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_arm64 \
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_amd64 
+        docker manifest create quay.io/klst.pw/sync-secrets-operator:${FULL_TAG%.*} \
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_armv7 \
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_arm64 \
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_amd64 
+        docker manifest create quay.io/klst.pw/sync-secrets-operator:${FULL_TAG%.*.*} \
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_armv7 \
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_arm64 \
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_amd64 
+        
+        docker manifest push quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}
+        docker manifest push quay.io/klst.pw/sync-secrets-operator:${FULL_TAG%.*}
+        docker manifest push quay.io/klst.pw/sync-secrets-operator:${FULL_TAG%.*.*}
