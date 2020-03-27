@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: sync-secrets
+    app.kubernetes.io/version: 0.1.0
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/part-of: sync-secrets-operator
+  name: sync-secrets-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sync-secrets-controller
+      app.kubernetes.io/part-of: sync-secrets-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sync-secrets-controller
+        app.kubernetes.io/part-of: sync-secrets-operator
+    spec:
+      containers:
+      - args:
+        - -v7
+        - --ignore-namespaces=kube-system
+        name: controller
+        image: quay.io/klst.pw/sync-secrets-operator:v0.0.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /-/healthz
+            port: 8081
+          initialDelaySeconds: 1
+          periodSeconds: 5
+        ports:
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /-/readyz
+            port: 8081
+          initialDelaySeconds: 1
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+      serviceAccountName: sync-secrets-controller
