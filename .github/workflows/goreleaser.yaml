@@ -1,5 +1,5 @@
 name: GoReleaser
-on: 
+on:
   push:
     tags:
     - v*
@@ -52,7 +52,7 @@ jobs:
         args: release --rm-dist
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+
         GH_BRANCH: ${{ github.ref }}
         GH_USER: ${{ github.actor }}
         GH_HOST: github_action
@@ -64,16 +64,16 @@ jobs:
         docker manifest create quay.io/klst.pw/sync-secrets-operator:${FULL_TAG} \
           quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_armv7 \
           quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_arm64 \
-          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_amd64 
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_amd64
         docker manifest create quay.io/klst.pw/sync-secrets-operator:${FULL_TAG%.*} \
           quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_armv7 \
           quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_arm64 \
-          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_amd64 
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_amd64
         docker manifest create quay.io/klst.pw/sync-secrets-operator:${FULL_TAG%.*.*} \
           quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_armv7 \
           quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_arm64 \
-          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_amd64 
-        
+          quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}-linux_amd64
+
         docker manifest push quay.io/klst.pw/sync-secrets-operator:${FULL_TAG}
         docker manifest push quay.io/klst.pw/sync-secrets-operator:${FULL_TAG%.*}
         docker manifest push quay.io/klst.pw/sync-secrets-operator:${FULL_TAG%.*.*}

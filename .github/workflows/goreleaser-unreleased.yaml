@@ -1,5 +1,5 @@
 name: GoReleaser (unreleased)
-on: 
+on:
   push:
     branches:
       - master
@@ -48,7 +48,7 @@ jobs:
         args: release --rm-dist --snapshot
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+
         GH_BRANCH: ${{ github.ref }}
         GH_USER: ${{ github.actor }}
         GH_HOST: github_action
