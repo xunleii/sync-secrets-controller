@@ -3,7 +3,7 @@
 [![GoReleaser Workflow](https://github.com/xunleii/sync-secrets-operator/workflows/GoReleaser/badge.svg)](https://github.com/xunleii/sync-secrets-operator/actions)
 [![Go test & linter Workflow](https://github.com/xunleii/sync-secrets-operator/workflows/Go%20-%20Test%20&%20Lint/badge.svg)](https://github.com/xunleii/sync-secrets-operator/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xunleii/sync-secrets-operator)](https://goreportcard.com/report/github.com/xunleii/sync-secrets-operator)
-![Go Version Card](https://img.shields.io/github/go-mod/go-version/xunleii/sync-secrets-operator)  
+[![Go Version Card](https://img.shields.io/github/go-mod/go-version/xunleii/sync-secrets-operator)](go.mod)
 
 ## Overview
 
