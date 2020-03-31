@@ -1,6 +1,9 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+
+<a name="v0.1.0"></a>
+## [v0.1.0] - 2020-03-31
 ### Code Refactoring
 - clean CI files & removed old ones
 - rename controller to operator
@@ -21,4 +24,5 @@
 - POC sync-controller
 
 
-[Unreleased]: https://github.com/xunleii/sync-secrets-operator/compare/v0.0.0...HEAD
+[Unreleased]: https://github.com/xunleii/sync-secrets-operator/compare/v0.1.0...HEAD
+[v0.1.0]: https://github.com/xunleii/sync-secrets-operator/compare/v0.0.0...v0.1.0
