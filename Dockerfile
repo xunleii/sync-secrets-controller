@@ -1,7 +1,6 @@
 ARG ARCH
-ARG OS
 
-FROM quay.io/prometheus/busybox-${OS}-${ARCH}:glibc
+FROM ${ARCH}/ubuntu:19.10
 LABEL maintainer="Alexandre NICOLAIE <alexandre.nicolaie@gmail.com>"
 
 LABEL org.opencontainers.image.authors="Alexandre NICOLAIE <alexandre.nicolaie@gmail.com>"
