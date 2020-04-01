@@ -5,38 +5,7 @@ on:
     - v*
 
 jobs:
-  changelog:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Git Unshallow
-      run: git fetch --unshallow --tags
-    - name: Setup Go environment
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.13
-    - name: Install git-chglog
-      working-directory: /tmp
-      env:
-        GOPATH: /opt/go
-      run: go get github.com/git-chglog/git-chglog/cmd/git-chglog
-    - name: Update changelog
-      env:
-        GOPATH: /opt/go
-      run: |
-        ${GOPATH}/bin/git-chglog -o CHANGELOG.md
-
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add CHANGELOG.md
-        git commit -m "Update CHANGELOG.md" CHANGELOG.md
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-
   goreleaser:
-    needs: changelog
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
