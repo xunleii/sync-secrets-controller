@@ -8,6 +8,7 @@ on:
 
 jobs:
   changelog-unreleased:
+    name: Build (without publish)
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2

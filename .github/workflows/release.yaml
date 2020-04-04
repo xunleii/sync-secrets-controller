@@ -6,6 +6,7 @@ on:
 
 jobs:
   release-docker:
+    name: Build Docker image
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -71,6 +72,7 @@ jobs:
       run: docker push quay.io/klst.pw/sync-secrets-operator:${version}-${ARCH}${{matrix.type}}
 
   release-docker-manifests:
+    name: Build Docker manifests
     needs: release-docker
     runs-on: ubuntu-latest
     strategy:
@@ -128,6 +130,7 @@ jobs:
         docker manifest push quay.io/klst.pw/sync-secrets-operator:${version%.*.*}${{matrix.type}}
 
   release-github:
+    name: Release tag to Github
     needs: release-docker-manifests
     runs-on: ubuntu-latest
     steps:

@@ -1,8 +1,9 @@
-name: Release controller (dryrun)
+name: Release controller (without publish)
 on: [pull_request]
 
 jobs:
   release-dryrun:
+    name: Build Docker image
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
