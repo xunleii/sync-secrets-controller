@@ -1,0 +1,62 @@
+name: Release controller (without publish)
+on: [pull_request]
+
+jobs:
+  release-dryrun:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch: ['amd64:linux/amd64', 'arm32v7:linux/arm', 'arm64v8:linux/arm64']
+        type: ['', '-debug']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Git Unshallow
+      run: git fetch --unshallow --tags
+    - name: Setup Go environment
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.14
+    - name: Set environment
+      run: |
+        export TAG=$(git describe --abbrev=0 --tags)
+
+        echo ::set-env name=version::${TAG}
+        echo ::set-env name=branch::$(git rev-parse --abbrev-ref HEAD)
+        echo ::set-env name=date::$(date --rfc-3339=seconds | sed 's/ /T/')
+
+        export OSARCH=${{matrix.arch}}
+        echo ::set-env name=ARCH::${OSARCH%:*}
+
+        export OSARCH=${OSARCH#*:}
+        echo ::set-env name=GOOS::${OSARCH%/*}
+        echo ::set-env name=GOARCH::${OSARCH#*/}
+
+        if [[ "${OSARCH}" == "arm32v7:linux/arm" ]]; then
+          echo ::set-env name=GOARM::v7
+        fi
+    - name: Download dependencies
+      run: go mod download
+    - name: Build controller for ${{matrix.arch}}
+      run: |
+        go build -ldflags="-s                                                                \
+          -X github.com/prometheus/common/version.Version=${version}                         \
+          -X github.com/prometheus/common/version.Revision=${{github.sha}}                   \
+          -X github.com/prometheus/common/version.Branch=${branch}                           \
+          -X github.com/prometheus/common/version.BuildUser=${{github.actor}}@github_action \
+          -X github.com/prometheus/common/version.BuildDate=${date}"                         \
+        -o controller-${ARCH} ./cmd/controller
+      env:
+        CGO_ENABLED: 0
+    - name: Build Docker images
+      run: |
+        docker build                                                                      \
+          --pull                                                                          \
+          --label=org.opencontainers.image.created=${date}                                \
+          --label=org.opencontainers.image.name=${{github.repository}}                    \
+          --label=org.opencontainers.image.revision=${{github.sha}}                       \
+          --label=org.opencontainers.image.version=${version}                             \
+          --build-arg=ARCH=${ARCH}                                                        \
+          --tag quay.io/klst.pw/sync-secrets-operator:${version}-${ARCH}${{matrix.type}}  \
+        -f Dockerfile${{matrix.type}} .

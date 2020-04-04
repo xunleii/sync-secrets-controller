@@ -1,0 +1,191 @@
+name: Release controller
+on:
+  push:
+    tags:
+    - v*
+
+jobs:
+  release-docker:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch: ['amd64:linux/amd64', 'arm32v7:linux/arm', 'arm64v8:linux/arm64']
+        type: ['', '-debug']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Git Unshallow
+      run: git fetch --unshallow --tags
+    - name: Setup Go environment
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.14
+    - name: Set environment
+      run: |
+        export TAG=$(git describe --abbrev=0 --tags)
+
+        echo ::set-env name=version::${TAG}
+        echo ::set-env name=branch::$(git rev-parse --abbrev-ref HEAD)
+        echo ::set-env name=date::$(date --rfc-3339=seconds | sed 's/ /T/')
+
+        export OSARCH=${{matrix.arch}}
+        echo ::set-env name=ARCH::${OSARCH%:*}
+
+        export OSARCH=${OSARCH#*:}
+        echo ::set-env name=GOOS::${OSARCH%/*}
+        echo ::set-env name=GOARCH::${OSARCH#*/}
+
+        if [[ "${OSARCH}" == "arm32v7:linux/arm" ]]; then
+          echo ::set-env name=GOARM::v7
+        fi
+    - name: Download dependencies
+      run: go mod download
+    - name: Build controller for ${{matrix.arch}}
+      run: |
+        go build -ldflags="-s                                                                \
+          -X github.com/prometheus/common/version.Version=${version}                         \
+          -X github.com/prometheus/common/version.Revision=${{github.sha}}                   \
+          -X github.com/prometheus/common/version.Branch=${branch}                           \
+          -X github.com/prometheus/common/version.BuildUser=${{github.actor}}@github_action \
+          -X github.com/prometheus/common/version.BuildDate=${date}"                         \
+        -o controller-${ARCH} ./cmd/controller
+      env:
+        CGO_ENABLED: 0
+    - uses: azure/docker-login@v1
+      with:
+        login-server: quay.io
+        username: ${{ secrets.QUAY_USER }}
+        password: ${{ secrets.QUAY_PASSWORD }}
+    - name: Build Docker images
+      run: |
+        docker build                                                                      \
+          --pull                                                                          \
+          --label=org.opencontainers.image.created=${date}                                \
+          --label=org.opencontainers.image.name=${{github.repository}}                    \
+          --label=org.opencontainers.image.revision=${{github.sha}}                       \
+          --label=org.opencontainers.image.version=${version}                             \
+          --build-arg=ARCH=${ARCH}                                                        \
+          --tag quay.io/klst.pw/sync-secrets-operator:${version}-${ARCH}${{matrix.type}}  \
+        -f Dockerfile${{matrix.type}} .
+    - name: Publish Docker images
+      run: docker push quay.io/klst.pw/sync-secrets-operator:${version}-${ARCH}${{matrix.type}}
+
+  release-docker-manifests:
+    name: Build Docker manifests
+    needs: release-docker
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        type: ['', '-debug']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Git Unshallow
+      run: git fetch --unshallow --tags
+    - name: Set environment
+      run: |
+        export TAG=$(git describe --abbrev=0 --tags)
+
+        echo ::set-env name=version::${TAG}
+        echo ::set-env name=branch::$(git rev-parse --abbrev-ref HEAD)
+        echo ::set-env name=date::$(date --rfc-3339=seconds | sed 's/ /T/')
+
+        export OSARCH=${{matrix.arch}}
+        echo ::set-env name=ARCH::${OSARCH%:*}
+
+        export OSARCH=${OSARCH#*:}
+        echo ::set-env name=GOOS::${OSARCH%/*}
+        echo ::set-env name=GOARCH::${OSARCH#*/}
+
+        if [[ "${OSARCH}" == "arm32v7:linux/arm" ]]; then
+          echo ::set-env name=GOARM::v7
+        fi
+    - uses: azure/docker-login@v1
+      with:
+        login-server: quay.io
+        username: ${{ secrets.QUAY_USER }}
+        password: ${{ secrets.QUAY_PASSWORD }}
+    - name: Release docker manifests
+      env:
+        DOCKER_CLI_EXPERIMENTAL: enabled
+      run: |
+        docker manifest create quay.io/klst.pw/sync-secrets-operator:${version}${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-operator:${version}-arm32v7${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-operator:${version}-arm64v8${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-operator:${version}-amd64${{matrix.type}}
+
+        docker manifest create quay.io/klst.pw/sync-secrets-operator:${version%.*}${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-operator:${version}-arm32v7${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-operator:${version}-arm64v8${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-operator:${version}-amd64${{matrix.type}}
+
+        docker manifest create quay.io/klst.pw/sync-secrets-operator:${version%.*.*}${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-operator:${version}-arm32v7${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-operator:${version}-arm64v8${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-operator:${version}-amd64${{matrix.type}}
+
+        docker manifest push quay.io/klst.pw/sync-secrets-operator:${version}${{matrix.type}}
+        docker manifest push quay.io/klst.pw/sync-secrets-operator:${version%.*}${{matrix.type}}
+        docker manifest push quay.io/klst.pw/sync-secrets-operator:${version%.*.*}${{matrix.type}}
+
+  release-github:
+    name: Release tag to Github
+    needs: release-docker-manifests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup Go environment
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.14
+    - name: Install git-chglog
+      working-directory: /tmp
+      env:
+        GOPATH: /opt/go
+      run: go get github.com/git-chglog/git-chglog/cmd/git-chglog
+
+    - uses: actions/checkout@v2
+    - name: Git Unshallow
+      run: git fetch --unshallow --tags
+    - name: Set environment
+      run: |
+        export TAG=$(git describe --abbrev=0 --tags)
+
+        echo ::set-env name=version::${TAG}
+        echo ::set-env name=branch::$(git rev-parse --abbrev-ref HEAD)
+        echo ::set-env name=date::$(date --rfc-3339=seconds | sed 's/ /T/')
+
+        export OSARCH=${{matrix.arch}}
+        echo ::set-env name=ARCH::${OSARCH%:*}
+
+        export OSARCH=${OSARCH#*:}
+        echo ::set-env name=GOOS::${OSARCH%/*}
+        echo ::set-env name=GOARCH::${OSARCH#*/}
+
+        if [[ "${OSARCH}" == "arm32v7:linux/arm" ]]; then
+          echo ::set-env name=GOARM::v7
+        fi
+    - name: Generate Changelog release
+      run: ${GOPATH}/bin/git-chglog --config .chglog/github-release.config.yml ${version} > .github-release.md
+      env:
+        GOPATH: /opt/go
+    - name: Generate Docker release
+      run: |
+        cat <<EOF >> .github-release.md
+
+        ## Docker
+        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version}\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version%.*}\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version%.*.*}\`
+
+        ### For debug purpose
+        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version}-debug\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version%.*}-debug\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version%.*.*}-debug\`
+        EOF
+    - name: Github Release
+      uses: softprops/action-gh-release@v1
+      with:
+        body_path: .github-release.md
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
