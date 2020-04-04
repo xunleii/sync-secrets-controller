@@ -2,6 +2,12 @@
 ## [Unreleased]
 
 
+<a name="v0.1.1"></a>
+## [v0.1.1] - 2020-04-04
+### Pull Requests
+- Merge pull request [#3](https://github.com/xunleii/sync-secrets-operator/issues/3) from xunleii/repo-remove-gorelease-dependency
+
+
 <a name="v0.1.0"></a>
 ## [v0.1.0] - 2020-03-31
 ### Code Refactoring
@@ -24,5 +30,6 @@
 - POC sync-controller
 
 
-[Unreleased]: https://github.com/xunleii/sync-secrets-operator/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/xunleii/sync-secrets-operator/compare/v0.1.1...HEAD
+[v0.1.1]: https://github.com/xunleii/sync-secrets-operator/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/xunleii/sync-secrets-operator/compare/v0.0.0...v0.1.0
