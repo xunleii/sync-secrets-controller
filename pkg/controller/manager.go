@@ -19,6 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/xunleii/sync-secrets-operator/pkg/registry"
 )
 
 const (
@@ -31,6 +33,10 @@ const (
 
 type (
 	context struct {
+		gocontext.Context
+		registry *registry.Registry
+		client   client.Client
+
 		ignoredNamespaces []string
 		owners            *sync.Map
 	}

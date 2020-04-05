@@ -29,6 +29,16 @@ type (
 	}
 )
 
+// New creates a new registry
+func New() *Registry {
+	return &Registry{
+		secretsByUID:             map[types.UID]*Secret{},
+		secretsByName:            map[types.NamespacedName]*Secret{},
+		secretsByOwnedSecretName: map[types.NamespacedName]*Secret{},
+		mx:                       sync.RWMutex{},
+	}
+}
+
 // SecretWithUID returns a registered secret with the given UID, or nil
 // if doesn't exists.
 func (r *Registry) SecretWithUID(uid types.UID) *Secret {

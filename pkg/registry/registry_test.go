@@ -30,6 +30,14 @@ var (
 	}
 )
 
+func TestRegistry_New(t *testing.T) {
+	registry := New()
+
+	assert.NotNil(t, registry.secretsByOwnedSecretName)
+	assert.NotNil(t, registry.secretsByUID)
+	assert.NotNil(t, registry.secretsByName)
+}
+
 func TestRegistry_SecretWithUID(t *testing.T) {
 	tests := []struct {
 		name   string
