@@ -19,28 +19,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"github.com/xunleii/sync-secrets-operator/pkg/registry"
 )
 
 const (
 	prefixAnnotation            = "secret.sync.klst.pw"
-	allNamespacesAnnotation     = prefixAnnotation + "/all-namespaces"
-	namespaceSelectorAnnotation = prefixAnnotation + "/namespace-selector"
+	AllNamespacesAnnotation     = prefixAnnotation + "/all-namespaces"
+	NamespaceSelectorAnnotation = prefixAnnotation + "/namespace-selector"
 
 	requeueAfter = 5 * time.Second
 )
 
 type (
-	Context struct {
-		gocontext.Context
-		registry *registry.Registry
-		client   client.Client
-
-		ignoredNamespaces []string
-		owners            *sync.Map
-	}
-
 	Controller struct {
 		Context
 		metricsBindAddress     string
@@ -51,7 +40,7 @@ type (
 func NewController(metricsBindAddress, healthProbeBindAddress string, ignoredNamespaces []string) *Controller {
 	return &Controller{
 		Context: Context{
-			ignoredNamespaces: ignoredNamespaces,
+			IgnoredNamespaces: ignoredNamespaces,
 			owners:            &sync.Map{},
 		},
 		metricsBindAddress:     metricsBindAddress,
@@ -129,8 +118,8 @@ func copySecret(client client.Client, owner *corev1.Secret, target types.Namespa
 		},
 		Data: owner.Data,
 	}
-	delete(copy.Annotations, allNamespacesAnnotation)
-	delete(copy.Annotations, namespaceSelectorAnnotation)
+	delete(copy.Annotations, AllNamespacesAnnotation)
+	delete(copy.Annotations, NamespaceSelectorAnnotation)
 
 	secret := &corev1.Secret{}
 	err := client.Get(gocontext.TODO(), target, secret)
@@ -165,7 +154,7 @@ func (ctx Context) DeepCopy() *Context {
 	var ignoredNamespaces []string
 
 	ctx.owners.Range(func(key, value interface{}) bool { owners.Store(key, value); return true })
-	copy(ignoredNamespaces, ctx.ignoredNamespaces)
+	copy(ignoredNamespaces, ctx.IgnoredNamespaces)
 
-	return &Context{owners: &owners, ignoredNamespaces: ignoredNamespaces}
+	return &Context{owners: &owners, IgnoredNamespaces: ignoredNamespaces}
 }

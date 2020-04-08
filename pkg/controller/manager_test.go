@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/thoas/go-funk"
 	corev1 "k8s.io/api/core/v1"
@@ -51,10 +50,5 @@ func TestNewController(t *testing.T) {
 	T.Expect(controller).ToNot(BeNil())
 	T.Expect(controller.metricsBindAddress).Should(Equal(":8888"))
 	T.Expect(controller.healthProbeBindAddress).Should(Equal(":9999"))
-	T.Expect(controller.ignoredNamespaces).Should(Equal([]string{"kube-system"}))
-}
-
-func TestReconcileSecret(t *testing.T) {
-	RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "")
+	T.Expect(controller.IgnoredNamespaces).Should(Equal([]string{"kube-system"}))
 }

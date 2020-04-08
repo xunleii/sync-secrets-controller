@@ -36,10 +36,10 @@ func (r *reconcileSecret) Reconcile(req reconcile.Request) (reconcile.Result, er
 		klog.Errorf("Failed to fetch %T %s: %s... retry after %s", secret, req, err, requeueAfter)
 		return reconcile.Result{RequeueAfter: requeueAfter}, err
 	}
-	ignoredNamespaces := append(r.ignoredNamespaces, secret.Namespace)
+	ignoredNamespaces := append(r.IgnoredNamespaces, secret.Namespace)
 
-	onAllNamespaces, allExists := secret.Annotations[allNamespacesAnnotation]
-	namespaceSelector, selectorExists := secret.Annotations[namespaceSelectorAnnotation]
+	onAllNamespaces, allExists := secret.Annotations[AllNamespacesAnnotation]
+	namespaceSelector, selectorExists := secret.Annotations[NamespaceSelectorAnnotation]
 
 	var options []client.ListOption
 	switch {
@@ -48,26 +48,26 @@ func (r *reconcileSecret) Reconcile(req reconcile.Request) (reconcile.Result, er
 		// TODO(ani): remove synced secrets if req is in the owner table
 		return reconcile.Result{}, nil
 	case allExists && selectorExists:
-		klog.Errorf("Invalid annotations on %T %s: annotations %s and %s cannot be used together", secret, req, allNamespacesAnnotation, namespaceSelectorAnnotation)
+		klog.Errorf("Invalid annotations on %T %s: annotations %s and %s cannot be used together", secret, req, AllNamespacesAnnotation, NamespaceSelectorAnnotation)
 		// TODO(ani): remove synced secrets if req is in the owner table
 		return reconcile.Result{}, nil
 	case allExists:
 		if strings.ToLower(onAllNamespaces) != "true" {
-			klog.V(3).Infof("Annotation %s on %T %s is not 'true', request ignored", allNamespacesAnnotation, secret, req)
+			klog.V(3).Infof("Annotation %s on %T %s is not 'true', request ignored", AllNamespacesAnnotation, secret, req)
 			// TODO(ani): remove synced secrets if req is in the owner table
 			return reconcile.Result{}, nil
 		}
-		klog.V(3).Infof("Sync %T %s on all namespaces except %v", secret, req, r.ignoredNamespaces)
+		klog.V(3).Infof("Sync %T %s on all namespaces except %v", secret, req, r.IgnoredNamespaces)
 	case selectorExists:
 		selector, err := labels.Parse(namespaceSelector)
 		if err != nil {
-			klog.Errorf("Failed to parse %s on %T %s: %s", namespaceSelectorAnnotation, secret, req, err)
+			klog.Errorf("Failed to parse %s on %T %s: %s", NamespaceSelectorAnnotation, secret, req, err)
 			// TODO(ani): remove synced secrets if req is in the owner table
 			return reconcile.Result{}, nil
 		}
 
 		options = append(options, client.MatchingLabelsSelector{Selector: selector})
-		klog.V(3).Infof("Sync %T %s on all namespaces validating %s, except %v", secret, req, selector, r.ignoredNamespaces)
+		klog.V(3).Infof("Sync %T %s on all namespaces validating %s, except %v", secret, req, selector, r.IgnoredNamespaces)
 	}
 
 	if _, alreadyCached := r.owners.Load(req.NamespacedName); !alreadyCached {

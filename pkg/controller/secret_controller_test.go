@@ -75,8 +75,8 @@ var (
 		owner, _ := setupSpecs(&client, &controller)
 
 		owner.Annotations = map[string]string{
-			allNamespacesAnnotation:     "true",
-			namespaceSelectorAnnotation: "need-shared-secret=true",
+			AllNamespacesAnnotation:     "true",
+			NamespaceSelectorAnnotation: "need-shared-secret=true",
 		}
 		ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 		ginkgo.It("should contain only one secret", func() {
@@ -85,7 +85,7 @@ var (
 			Expect(secrets.Items).Should(HaveLen(1))
 		})
 	})
-	_ = ginkgo.Describe("Reconcile secrets with '"+allNamespacesAnnotation+"' annotation", func() {
+	_ = ginkgo.Describe("Reconcile secrets with '"+AllNamespacesAnnotation+"' annotation", func() {
 		var client client.Client
 		var controller reconcileSecret
 
@@ -93,7 +93,7 @@ var (
 
 		ginkgo.When("when is invalid", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations = map[string]string{allNamespacesAnnotation: "false"}
+			owner.Annotations = map[string]string{AllNamespacesAnnotation: "false"}
 
 			ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 			ginkgo.It("should contain one secret & zero replicated secret", func() {
@@ -106,7 +106,7 @@ var (
 
 		ginkgo.When("is 'true'", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations = map[string]string{allNamespacesAnnotation: "true"}
+			owner.Annotations = map[string]string{AllNamespacesAnnotation: "true"}
 
 			ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 			ginkgo.It("should contain three secrets & two replicated secrets", func() {
@@ -158,7 +158,7 @@ var (
 
 			ginkgo.Context("with 'kube-system' namespace ignored", func() {
 				controller := controller.DeepCopy()
-				controller.ignoredNamespaces = []string{"kube-system"}
+				controller.IgnoredNamespaces = []string{"kube-system"}
 
 				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, controller, owner) })
 				ginkgo.It("should contain two secrets & one replicated secrets", func() {
@@ -203,7 +203,7 @@ var (
 			})
 		})
 	})
-	_ = ginkgo.Describe("Reconcile secrets with '"+namespaceSelectorAnnotation+"' annotation", func() {
+	_ = ginkgo.Describe("Reconcile secrets with '"+NamespaceSelectorAnnotation+"' annotation", func() {
 		var client client.Client
 		var controller reconcileSecret
 
@@ -220,19 +220,19 @@ var (
 			}
 
 			ginkgo.When("when there is no selector", func() {
-				owner.Annotations = map[string]string{namespaceSelectorAnnotation: ""}
+				owner.Annotations = map[string]string{NamespaceSelectorAnnotation: ""}
 				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 				ginkgo.It("should contain one secret & zero replicated secret", assertNoReplicatedSecret)
 			})
 
 			ginkgo.When("when the selector is invalid", func() {
-				owner.Annotations = map[string]string{namespaceSelectorAnnotation: "select-nothing"}
+				owner.Annotations = map[string]string{NamespaceSelectorAnnotation: "select-nothing"}
 				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 				ginkgo.It("should contain one secret & zero replicated secret", assertNoReplicatedSecret)
 			})
 
 			ginkgo.When("when the selector doesn't match", func() {
-				owner.Annotations = map[string]string{namespaceSelectorAnnotation: "need-shared-secret=true"}
+				owner.Annotations = map[string]string{NamespaceSelectorAnnotation: "need-shared-secret=true"}
 				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
 				ginkgo.It("should contain one secret & zero replicated secret", assertNoReplicatedSecret)
 			})
@@ -240,7 +240,7 @@ var (
 
 		ginkgo.When("selector is 'need-shared-secret=true'", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations = map[string]string{namespaceSelectorAnnotation: "need-shared-secret=true"}
+			owner.Annotations = map[string]string{NamespaceSelectorAnnotation: "need-shared-secret=true"}
 
 			ginkgo.It("must update 'kube-public' namespace", func() {
 				Expect(client.Update(gocontext.TODO(), &corev1.Namespace{
@@ -301,7 +301,7 @@ var (
 
 			ginkgo.Context("with 'kube-public' namespace ignored", func() {
 				controller := controller.DeepCopy()
-				controller.ignoredNamespaces = []string{"kube-public"}
+				controller.IgnoredNamespaces = []string{"kube-public"}
 
 				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, controller, owner) })
 				ginkgo.It("should contain one secret & no replicated secret", func() {

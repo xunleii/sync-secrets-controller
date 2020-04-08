@@ -22,8 +22,8 @@ var (
 		var (
 			owner = &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "shared-secret", Namespace: "default", UID: uuid.NewUUID(),
-					Annotations: map[string]string{allNamespacesAnnotation: "true"},
+					Name: "shared-secret", Namespace: "default", UID: types.UID(uuid.NewUUID()),
+					Annotations: map[string]string{AllNamespacesAnnotation: "true"},
 				},
 				Data: map[string][]byte{"owner": []byte(base64.StdEncoding.EncodeToString([]byte("the-owner-value")))},
 			}
