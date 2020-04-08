@@ -14,7 +14,7 @@ import (
 )
 
 func TestSynchronizeSecret(t *testing.T) {
-	ctx := context{
+	ctx := Context{
 		Context:           gocontext.TODO(),
 		registry:          registry.New(),
 		client:            fake.NewFakeClientWithScheme(scheme.Scheme),

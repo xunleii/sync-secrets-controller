@@ -12,7 +12,7 @@ import (
 )
 
 type reconcileOwnedSecret struct {
-	*context
+	*Context
 	client client.Client
 }
 
@@ -58,7 +58,7 @@ func (r *reconcileOwnedSecret) Reconcile(req reconcile.Request) (reconcile.Resul
 
 func (r *reconcileOwnedSecret) DeepCopy() *reconcileOwnedSecret {
 	return &reconcileOwnedSecret{
-		context: r.context.DeepCopy(),
+		Context: r.Context.DeepCopy(),
 		client:  r.client,
 	}
 }

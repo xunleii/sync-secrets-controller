@@ -32,7 +32,7 @@ const (
 )
 
 type (
-	context struct {
+	Context struct {
 		gocontext.Context
 		registry *registry.Registry
 		client   client.Client
@@ -42,7 +42,7 @@ type (
 	}
 
 	Controller struct {
-		context
+		Context
 		metricsBindAddress     string
 		healthProbeBindAddress string
 	}
@@ -50,7 +50,7 @@ type (
 
 func NewController(metricsBindAddress, healthProbeBindAddress string, ignoredNamespaces []string) *Controller {
 	return &Controller{
-		context: context{
+		Context: Context{
 			ignoredNamespaces: ignoredNamespaces,
 			owners:            &sync.Map{},
 		},
@@ -74,7 +74,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	_ = mgr.AddHealthzCheck("healthz", func(req *http.Request) error { return nil })
 
 	secretCtrl, err := controller.New("sync-secrets", mgr, controller.Options{
-		Reconciler: &reconcileSecret{context: &c.context, client: mgr.GetClient()},
+		Reconciler: &reconcileSecret{Context: &c.Context, client: mgr.GetClient()},
 	})
 	if err != nil {
 		klog.Fatalf("Unable to set up individual controller (sync-secrets): %s", err)
@@ -86,7 +86,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	}
 
 	ownedSecretCtrl, err := controller.New("sync-owned-secrets", mgr, controller.Options{
-		Reconciler: &reconcileOwnedSecret{context: &c.context, client: mgr.GetClient()},
+		Reconciler: &reconcileOwnedSecret{Context: &c.Context, client: mgr.GetClient()},
 	})
 	if err != nil {
 		klog.Fatalf("Unable to set up individual controller (sync-owned-secrets): %s", err)
@@ -160,12 +160,12 @@ func copySecret(client client.Client, owner *corev1.Secret, target types.Namespa
 	return nil
 }
 
-func (ctx context) DeepCopy() *context {
+func (ctx Context) DeepCopy() *Context {
 	var owners sync.Map
 	var ignoredNamespaces []string
 
 	ctx.owners.Range(func(key, value interface{}) bool { owners.Store(key, value); return true })
 	copy(ignoredNamespaces, ctx.ignoredNamespaces)
 
-	return &context{owners: &owners, ignoredNamespaces: ignoredNamespaces}
+	return &Context{owners: &owners, ignoredNamespaces: ignoredNamespaces}
 }

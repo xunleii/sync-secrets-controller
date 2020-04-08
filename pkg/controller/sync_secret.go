@@ -21,7 +21,7 @@ type (
 )
 
 // SynchronizeSecret duplicates the given secret on the target namespaces
-func SynchronizeSecret(ctx *context, secret corev1.Secret) error {
+func SynchronizeSecret(ctx *Context, secret corev1.Secret) error {
 	name := types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name}
 	if funk.ContainsString(ctx.ignoredNamespaces, secret.Namespace) {
 		klog.V(3).Infof("namespace %s is ignored, ignore synchronization of %T %s", secret.Namespace, secret, name)

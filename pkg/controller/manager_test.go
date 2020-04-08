@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/thoas/go-funk"
 	corev1 "k8s.io/api/core/v1"
@@ -55,6 +55,6 @@ func TestNewController(t *testing.T) {
 }
 
 func TestReconcileSecret(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "")
+	RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "")
 }
