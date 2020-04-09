@@ -21,7 +21,7 @@ type (
 )
 
 // SynchronizeSecret duplicates the given secret on the target namespaces
-func SynchronizeSecret(ctx *Context, secret corev1.Secret) error {
+func SynchronizeSecret(ctx *Context, secret corev1.Secret, targetNamespaces ...string) error {
 	name := types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name}
 	if funk.ContainsString(ctx.IgnoredNamespaces, secret.Namespace) {
 		klog.V(3).Infof("namespace %s is ignored, ignore synchronization of %T %s", secret.Namespace, secret, name)
@@ -80,17 +80,29 @@ func SynchronizeSecret(ctx *Context, secret corev1.Secret) error {
 
 	klog.V(3).Infof("list all namespaces")
 	ignoredNamespaces := append(ctx.IgnoredNamespaces, secret.Namespace)
-	namespaces := &corev1.NamespaceList{}
-	if err := ctx.client.List(ctx, namespaces, options...); err != nil {
+	clusterNamespaces := &corev1.NamespaceList{}
+	if err := ctx.client.List(ctx, clusterNamespaces, options...); err != nil {
 		return ClientError{fmt.Errorf("failed to list namespaces: %w", err)}
 	}
 
-	klog.V(0).Infof("synchronize %T %s on all namespaces except %v", secret, name, ignoredNamespaces)
-	for _, namespace := range namespaces.Items {
+	klog.V(3).Infof("filter namespaces on which secret must be synchronized")
+	var namespaces []corev1.Namespace
+	for _, namespace := range clusterNamespaces.Items {
 		if funk.ContainsString(ignoredNamespaces, namespace.Name) {
+			klog.V(4).Infof("namespace %s ignored by '%v'", namespace.Name, ignoredNamespaces)
 			continue
 		}
 
+		if len(targetNamespaces) > 0 && !funk.ContainsString(targetNamespaces, namespace.Name) {
+			klog.V(4).Infof("namespace %s ignored because not targeted", namespace.Name)
+			continue
+		}
+
+		namespaces = append(namespaces, namespace)
+	}
+
+	klog.V(0).Infof("synchronize %T %s on all targeted namespaces (%v) except %v", secret, name, targetNamespaces, ignoredNamespaces)
+	for _, namespace := range namespaces {
 		klog.V(2).Infof("synchronize %T %s on %s", secret, name, namespace.Name)
 		ownedName := types.NamespacedName{Namespace: namespace.Name, Name: secret.Name}
 		ownedSecret := &corev1.Secret{}

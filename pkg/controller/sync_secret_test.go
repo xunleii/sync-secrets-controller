@@ -131,6 +131,14 @@ var _ = Describe("SynchronizeSecret", func() {
 					Expect(secrets.Items).Should(HaveLen(5))
 				})
 
+				It("should synchronize secret on targeted namespace only ('kube-public' & 'alpha')", func() {
+					Expect(controller.SynchronizeSecret(context, secret, "kube-public", "alpha")).Should(Succeed())
+
+					var secrets corev1.SecretList
+					Expect(kube.List(context, &secrets)).To(Succeed())
+					Expect(secrets.Items).Should(HaveLen(2))
+				})
+
 				When("secret is already synced and secret is updated", func() {
 					It("should update owned secrets", func() {
 						const annotation = "new-annotation"
@@ -215,6 +223,14 @@ var _ = Describe("SynchronizeSecret", func() {
 					var secrets corev1.SecretList
 					Expect(kube.List(context, &secrets)).To(Succeed())
 					Expect(secrets.Items).Should(HaveLen(2))
+				})
+
+				It("should synchronize secret on targeted ('kube-public' & 'alpha') and selected ('alpha' & 'bravo') only", func() {
+					Expect(controller.SynchronizeSecret(context, secret, "kube-public", "alpha")).Should(Succeed())
+
+					var secrets corev1.SecretList
+					Expect(kube.List(context, &secrets)).To(Succeed())
+					Expect(secrets.Items).Should(HaveLen(1))
 				})
 			})
 		})
