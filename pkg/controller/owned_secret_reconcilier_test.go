@@ -28,7 +28,7 @@ var (
 				Data: map[string][]byte{"owner": []byte(base64.StdEncoding.EncodeToString([]byte("the-owner-value")))},
 			}
 			client     = fake.NewFakeClientWithScheme(scheme.Scheme)
-			controller = &reconcileOwnedSecret{Context: &Context{owners: &sync.Map{}}, client: client}
+			controller = &ownedSecretReconcilier{Context: &Context{owners: &sync.Map{}, client: client}}
 		)
 
 		ginkgo.It("must create default namespaces", func() {
@@ -40,7 +40,7 @@ var (
 		})
 		ginkgo.It("must create original secret", func() { Expect(client.Create(gocontext.TODO(), owner)).To(Succeed()) })
 		ginkgo.It("must create owned secrets", func() {
-			controller := reconcileSecret{Context: &Context{owners: controller.owners}, client: client}
+			controller := secretReconciler{Context: &Context{owners: controller.owners, client: client}}
 
 			req := reconcile.Request{NamespacedName: types.NamespacedName{Name: owner.Name, Namespace: owner.Namespace}}
 			res, err := controller.Reconcile(req)
