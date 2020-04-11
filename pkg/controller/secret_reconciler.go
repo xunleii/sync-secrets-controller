@@ -7,9 +7,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type secretReconciler struct{ *Context }
+type SecretReconciler struct{ *Context }
 
-func (r *secretReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+func (r *SecretReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	secret := corev1.Secret{}
 	klog.Infof("reconcile %T %s", secret, req)
 

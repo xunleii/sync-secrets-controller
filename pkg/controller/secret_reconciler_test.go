@@ -1,10 +1,10 @@
-package controller
+package controller_test
 
 import (
 	gocontext "context"
 	"encoding/base64"
 
-	"github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,308 +15,348 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/xunleii/sync-secrets-operator/pkg/registry"
+	"github.com/xunleii/sync-secrets-operator/pkg/controller"
+	registrypkg "github.com/xunleii/sync-secrets-operator/pkg/registry"
 )
 
 var (
-	setupSpecs = func(client *client.Client, controller *secretReconciler) (*corev1.Secret, []metav1.OwnerReference) {
+	_ = Describe("Reconcile Secret", func() {
+		var kube client.Client
+		var reg *registrypkg.Registry
+		var context *controller.Context
+		var reconcilier reconcile.Reconciler
+
+		var uid = uuid.NewUUID()
 		var (
-			owner = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "shared-secret", Namespace: "default", UID: uuid.NewUUID()},
-				Data:       map[string][]byte{"owner": []byte(base64.StdEncoding.EncodeToString([]byte("the-owner-value")))},
+			owner = corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "fake-secret", Namespace: "default", UID: uid,
+					Annotations: map[string]string{},
+				},
+				Type: "Opaque",
+				Data: map[string][]byte{
+					"username": []byte(base64.StdEncoding.EncodeToString([]byte("my-app"))),
+					"password": []byte(base64.StdEncoding.EncodeToString([]byte("39528$vdg7Jb"))),
+				},
 			}
-			ownerReferences = []metav1.OwnerReference{
-				{APIVersion: corev1.SchemeGroupVersion.String(), Kind: "Secret", Name: owner.Name, UID: owner.UID},
-			}
+			request = reconcile.Request{NamespacedName: types.NamespacedName{Namespace: owner.Namespace, Name: owner.Name}}
 		)
 
-		*client = fake.NewFakeClientWithScheme(scheme.Scheme)
-		*controller = secretReconciler{Context: &Context{registry: registry.New(), client: *client}}
+		BeforeEach(func() {
+			kube = fake.NewFakeClientWithScheme(scheme.Scheme)
+			reg = registrypkg.New()
+			context = controller.NewTestContext(gocontext.TODO(), kube, reg)
+			reconcilier = &controller.SecretReconciler{context}
 
-		ginkgo.It("must create default namespaces", func() {
-			namespaces := []string{"kube-system", "kube-public", "default"}
-			for _, namespace := range namespaces {
-				Expect((*client).Create(gocontext.TODO(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})).
-					To(Succeed())
-			}
+			CreateNamespaces(context, kube)
+			Expect(kube.Create(context, owner.DeepCopy())).To(Succeed())
 		})
 
-		ginkgo.It("must create original secret", func() {
-			Expect((*client).Create(gocontext.TODO(), owner)).To(Succeed())
-		})
-
-		return owner, ownerReferences
-	}
-	reconcileUpdatedSecret = func(client client.Client, controller *secretReconciler, owner *corev1.Secret) {
-		ownerRequest := reconcile.Request{NamespacedName: types.NamespacedName{Name: owner.Name, Namespace: owner.Namespace}}
-
-		Expect(client.Update(gocontext.TODO(), owner)).To(Succeed())
-		res, err := controller.Reconcile(ownerRequest)
-		Expect(res).Should(Equal(reconcile.Result{}))
-		Expect(err).Should(Succeed())
-	}
-
-	_ = ginkgo.Describe("Reconcile secrets without annotation", func() {
-		var client client.Client
-		var controller secretReconciler
-
-		owner, _ := setupSpecs(&client, &controller)
-
-		ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-		ginkgo.It("should contain only one secret", func() {
-			secrets := &corev1.SecretList{}
-			Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-			Expect(secrets.Items).Should(HaveLen(1))
-		})
-	})
-	_ = ginkgo.Describe("Reconcile secrets with both annotations", func() {
-		var client client.Client
-		var controller secretReconciler
-
-		owner, _ := setupSpecs(&client, &controller)
-
-		owner.Annotations = map[string]string{
-			AllNamespacesAnnotation:     "true",
-			NamespaceSelectorAnnotation: "need-shared-secret=true",
-		}
-		ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-		ginkgo.It("should contain only one secret", func() {
-			secrets := &corev1.SecretList{}
-			Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-			Expect(secrets.Items).Should(HaveLen(1))
-		})
-	})
-	_ = ginkgo.Describe("Reconcile secrets with '"+AllNamespacesAnnotation+"' annotation", func() {
-		var client client.Client
-		var controller secretReconciler
-
-		owner, ownerReferences := setupSpecs(&client, &controller)
-
-		ginkgo.When("when is invalid", func() {
+		When("secret doesn't exist", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations = map[string]string{AllNamespacesAnnotation: "false"}
+			It("should ignore the request", func() {
+				By("deleting secret", func() {
+					Expect(kube.Delete(context, owner)).To(Succeed())
+				})
 
-			ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-			ginkgo.It("should contain one secret & zero replicated secret", func() {
-				secrets := &corev1.SecretList{}
-				Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-				Expect(secrets.Items).Should(HaveLen(1))
-				Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), HaveLen(0)))
+				Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+				Expect(reg).ShouldNot(registry.HasSecret(request.NamespacedName, owner.UID))
+
+				secrets := corev1.SecretList{}
+				Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+				Expect(secrets.Items).Should(BeEmpty())
 			})
 		})
 
-		ginkgo.When("is 'true'", func() {
+		When("secret's namespace is ignored", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations = map[string]string{AllNamespacesAnnotation: "true"}
+			It("should ingore the request", func() {
+				context.IgnoredNamespaces = []string{"default"}
+				reconcilier = &controller.SecretReconciler{context}
 
-			ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-			ginkgo.It("should contain three secrets & two replicated secrets", func() {
-				secrets := &corev1.SecretList{}
-				Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-				Expect(secrets.Items).Should(HaveLen(3))
-				Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
-					WithTransform(GetNames, ConsistOf(owner.Name, owner.Name)),
-					WithTransform(GetNamespaces, ConsistOf("kube-system", "kube-public")),
-					WithTransform(GetOwnerReferences, ConsistOf(ownerReferences, ownerReferences)),
-				)))
-			})
+				Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+				Expect(reg).ShouldNot(registry.HasSecret(request.NamespacedName, owner.UID))
 
-			ginkgo.When("annotations are updated", func() {
-				owner.Annotations["foo"] = "bar"
-
-				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-				ginkgo.It("should contain two replicated secrets with the new annotation", func() {
-					expectedAnnotations := map[string]string{"foo": "bar"}
-					secrets := &corev1.SecretList{}
-
-					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-					Expect(secrets.Items).Should(HaveLen(3))
-					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
-						WithTransform(GetNames, ConsistOf(owner.Name, owner.Name)),
-						WithTransform(GetNamespaces, ConsistOf("kube-system", "kube-public")),
-						WithTransform(GetAnnotations, ConsistOf(expectedAnnotations, expectedAnnotations)),
-					)))
-				})
-			})
-
-			ginkgo.When("labels are updated", func() {
-				owner.Labels = map[string]string{"foo": "bar"}
-
-				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-				ginkgo.It("should contain two replicated secrets with the new annotation", func() {
-					expectedLabels := map[string]string{"foo": "bar"}
-					secrets := &corev1.SecretList{}
-
-					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-					Expect(secrets.Items).Should(HaveLen(3))
-					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
-						WithTransform(GetNames, ConsistOf(owner.Name, owner.Name)),
-						WithTransform(GetNamespaces, ConsistOf("kube-system", "kube-public")),
-						WithTransform(GetLabels, ConsistOf(expectedLabels, expectedLabels)),
-					)))
-				})
-			})
-
-			//ginkgo.Context("with 'kube-system' namespace ignored", func() {
-			//	controller := controller.DeepCopy()
-			//	controller.IgnoredNamespaces = []string{"kube-system"}
-			//
-			//	ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-			//	ginkgo.It("should contain two secrets & one replicated secrets", func() {
-			//		//TODO: removing mechanism is not implemented
-			//		ginkgo.Skip("removing mechanism is not implemented")
-			//
-			//		secrets := &corev1.SecretList{}
-			//		Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-			//		Expect(secrets.Items).Should(HaveLen(2))
-			//		Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
-			//			WithTransform(GetNames, ConsistOf(owner.Name)),
-			//			WithTransform(GetNamespaces, ConsistOf("kube-public")),
-			//			WithTransform(GetOwnerReferences, ConsistOf([][]metav1.OwnerReference{ownerReferences})),
-			//		)))
-			//	})
-			//})
-
-			ginkgo.When("secret is removed", func() {
-				// TODO: use registry instead
-				//ginkgo.It("should have an owner table with the secret refs", func() {
-				//	owners := map[interface{}]interface{}{}
-				//	controller.owners.Range(func(key, value interface{}) bool { owners[key] = value; return true })
-				//
-				//	expectedOwners := map[interface{}]interface{}{
-				//		owner.UID: types.NamespacedName{Namespace: owner.Namespace, Name: owner.Name},
-				//		types.NamespacedName{Namespace: owner.Namespace, Name: owner.Name}: owner.UID,
-				//	}
-				//	Expect(owners).Should(Equal(expectedOwners))
-				//})
-
-				ginkgo.It("should remove the secret", func() {
-					Expect(client.Delete(gocontext.TODO(), owner)).To(Succeed())
-					res, err := controller.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: owner.Namespace, Name: owner.Name}})
-					Expect(err).Should(Succeed())
-					Expect(res).Should(Equal(reconcile.Result{}))
-				})
-
-				// TODO: use registry instead
-				//ginkgo.It("should have an empty owner table", func() {
-				//	owners := map[interface{}]interface{}{}
-				//	controller.owners.Range(func(key, value interface{}) bool { owners[key] = value; return true })
-				//	Expect(owners).Should(BeEmpty())
-				//})
-			})
-		})
-	})
-	_ = ginkgo.Describe("Reconcile secrets with '"+NamespaceSelectorAnnotation+"' annotation", func() {
-		var client client.Client
-		var controller secretReconciler
-
-		owner, ownerReferences := setupSpecs(&client, &controller)
-
-		ginkgo.When("when is invalid", func() {
-			owner := owner.DeepCopy()
-
-			assertNoReplicatedSecret := func() {
-				secrets := &corev1.SecretList{}
-				Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-				Expect(secrets.Items).Should(HaveLen(1))
-				Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), HaveLen(0)))
-			}
-
-			ginkgo.When("when there is no selector", func() {
-				owner.Annotations = map[string]string{NamespaceSelectorAnnotation: ""}
-				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-				ginkgo.It("should contain one secret & zero replicated secret", assertNoReplicatedSecret)
-			})
-
-			ginkgo.When("when the selector is invalid", func() {
-				owner.Annotations = map[string]string{NamespaceSelectorAnnotation: "select-nothing"}
-				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-				ginkgo.It("should contain one secret & zero replicated secret", assertNoReplicatedSecret)
-			})
-
-			ginkgo.When("when the selector doesn't match", func() {
-				owner.Annotations = map[string]string{NamespaceSelectorAnnotation: "need-shared-secret=true"}
-				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-				ginkgo.It("should contain one secret & zero replicated secret", assertNoReplicatedSecret)
+				secrets := corev1.SecretList{}
+				Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+				Expect(secrets).Should(WithoutOwner(owner, BeEmpty()))
 			})
 		})
 
-		ginkgo.When("selector is 'need-shared-secret=true'", func() {
+		When("no annotation are given", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations = map[string]string{NamespaceSelectorAnnotation: "need-shared-secret=true"}
+			It("should ignore the request", func() {
+				Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+				Expect(reg).ShouldNot(registry.HasSecret(request.NamespacedName, owner.UID))
 
-			ginkgo.It("must update 'kube-public' namespace", func() {
-				Expect(client.Update(gocontext.TODO(), &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "kube-public",
-						Labels: map[string]string{"need-shared-secret": "true"},
-					},
-				}))
+				secrets := corev1.SecretList{}
+				Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+				Expect(secrets).Should(WithoutOwner(owner, BeEmpty()))
 			})
+		})
 
-			ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-			ginkgo.It("should contain two secrets & one replicated secrets", func() {
-				secrets := &corev1.SecretList{}
-				Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-				Expect(secrets.Items).Should(HaveLen(2))
-				Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
-					WithTransform(GetNames, ConsistOf(owner.Name)),
-					WithTransform(GetNamespaces, ConsistOf("kube-public")),
-					WithTransform(GetOwnerReferences, ConsistOf([][]metav1.OwnerReference{ownerReferences})),
-				)))
+		When("both annotations are given", func() {
+			owner := owner.DeepCopy()
+			It("should ignore the request", func() {
+				By("updating secret with both annotation", func() {
+					owner.Annotations = map[string]string{
+						controller.AllNamespacesAnnotation:     "true",
+						controller.NamespaceSelectorAnnotation: "sync=secret",
+					}
+					Expect(kube.Update(context, owner)).To(Succeed())
+				})
+
+				Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+				Expect(reg).ShouldNot(registry.HasSecret(request.NamespacedName, owner.UID))
+
+				secrets := corev1.SecretList{}
+				Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+				Expect(secrets).Should(WithoutOwner(owner, BeEmpty()))
 			})
+		})
 
-			ginkgo.When("annotations are updated", func() {
-				owner.Annotations["foo"] = "bar"
+		When("'"+controller.AllNamespacesAnnotation+"' annotation is given", func() {
+			owner := owner.DeepCopy()
+			owner.Annotations = map[string]string{controller.AllNamespacesAnnotation: "true"}
 
-				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-				ginkgo.It("should contain two replicated secrets with the new annotation", func() {
-					expectedAnnotations := map[string]string{"foo": "bar"}
-					secrets := &corev1.SecretList{}
+			When("annotation is invalid", func() {
+				owner := owner.DeepCopy()
+				It("should ignore the request", func() {
+					By("updating secret with invalid annotation", func() {
+						owner.Annotations = map[string]string{controller.AllNamespacesAnnotation: "invalid"}
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
 
-					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-					Expect(secrets.Items).Should(HaveLen(2))
-					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
-						WithTransform(GetNames, ConsistOf(owner.Name)),
-						WithTransform(GetNamespaces, ConsistOf("kube-public")),
-						WithTransform(GetAnnotations, ConsistOf(expectedAnnotations)),
-					)))
+					Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+					Expect(reg).ShouldNot(registry.HasSecret(request.NamespacedName, owner.UID))
+
+					secrets := corev1.SecretList{}
+					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+					Expect(secrets).Should(WithoutOwner(owner, BeEmpty()))
 				})
 			})
 
-			ginkgo.When("labels are updated", func() {
-				owner.Labels = map[string]string{"foo": "bar"}
+			When("namespace 'alpha' is ignored", func() {
+				It("should create owned secrets on all namespace but 'alpha'", func() {
+					context.IgnoredNamespaces = []string{"alpha"}
+					reconcilier = &controller.SecretReconciler{context}
 
-				ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, &controller, owner) })
-				ginkgo.It("should contain two replicated secrets with the new annotation", func() {
-					expectedLabels := map[string]string{"foo": "bar"}
-					secrets := &corev1.SecretList{}
+					By("updating secret with annotation", func() {
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
 
-					Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-					Expect(secrets.Items).Should(HaveLen(2))
-					Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), And(
-						WithTransform(GetNames, ConsistOf(owner.Name)),
-						WithTransform(GetNamespaces, ConsistOf("kube-public")),
-						WithTransform(GetLabels, ConsistOf(expectedLabels)),
-					)))
+					Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+					Expect(reg).Should(registry.HasSecret(request.NamespacedName, owner.UID))
+					Expect(reg).Should(registry.HasOwnedSecret(request.NamespacedName, owner.UID, "kube-system", "kube-public", "kube-lease", "bravo"))
+
+					secrets := corev1.SecretList{}
+					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "kube-system", "kube-public", "kube-lease", "bravo"))
 				})
 			})
 
-			//ginkgo.Context("with 'kube-public' namespace ignored", func() {
-			//	controller := controller.DeepCopy()
-			//	controller.IgnoredNamespaces = []string{"kube-public"}
-			//
-			//	ginkgo.It("should reconcile the updated secret", func() { reconcileUpdatedSecret(client, controller, owner) })
-			//	ginkgo.It("should contain one secret & no replicated secret", func() {
-			//		//TODO: removing mechanism is not implemented
-			//		ginkgo.Skip("removing mechanism is not implemented")
-			//
-			//		secrets := &corev1.SecretList{}
-			//		Expect(client.List(gocontext.TODO(), secrets)).To(Succeed())
-			//		Expect(secrets.Items).Should(HaveLen(1))
-			//		Expect(secrets.Items).Should(WithTransform(IgnoreOwner(*owner), HaveLen(0)))
-			//	})
-			//})
+			When("no namespace is ignored", func() {
+				It("should create owned secrets on all namespace", func() {
+					By("updating secret with annotation", func() {
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
+
+					Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+					Expect(reg).Should(registry.HasSecret(request.NamespacedName, owner.UID))
+					Expect(reg).Should(registry.HasOwnedSecret(request.NamespacedName, owner.UID, "kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+
+					secrets := corev1.SecretList{}
+					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+				})
+			})
+		})
+
+		When("'"+controller.NamespaceSelectorAnnotation+"' annotation is given", func() {
+			owner := owner.DeepCopy()
+			owner.Annotations = map[string]string{controller.NamespaceSelectorAnnotation: "sync=secret"}
+
+			When("annotation is invalid", func() {
+				It("should ignore the request", func() {
+					owner := owner.DeepCopy()
+					By("updating secret with invalid annotation", func() {
+						owner.Annotations = map[string]string{controller.NamespaceSelectorAnnotation: "!!!invalid!!!"}
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
+
+					Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+					Expect(reg).ShouldNot(registry.HasSecret(request.NamespacedName, owner.UID))
+
+					secrets := corev1.SecretList{}
+					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+					Expect(secrets).Should(WithoutOwner(owner, BeEmpty()))
+				})
+			})
+
+			When("namespace 'alpha' is ignored", func() {
+				It("should create owned secrets on all matching namespace but 'alpha'", func() {
+					context.IgnoredNamespaces = []string{"alpha"}
+					reconcilier = &controller.SecretReconciler{context}
+
+					By("updating secret with annotation", func() {
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
+
+					Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+					Expect(reg).Should(registry.HasSecret(request.NamespacedName, owner.UID))
+					Expect(reg).Should(registry.HasOwnedSecret(request.NamespacedName, owner.UID, "bravo"))
+
+					secrets := corev1.SecretList{}
+					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "bravo"))
+				})
+			})
+
+			When("no namespace is ignored", func() {
+				It("should create owned secrets on all matching namespace", func() {
+					By("updating secret with annotation", func() {
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
+
+					Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+					Expect(reg).Should(registry.HasSecret(request.NamespacedName, owner.UID))
+					Expect(reg).Should(registry.HasOwnedSecret(request.NamespacedName, owner.UID, "alpha", "bravo"))
+
+					secrets := corev1.SecretList{}
+					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "alpha", "bravo"))
+				})
+			})
+		})
+
+		annotations := map[string]string{controller.AllNamespacesAnnotation: "true"}
+
+		When("secret is created", func() {
+			owner := owner.DeepCopy()
+			owner.Annotations = annotations
+
+			It("should create all owned secrets and all linked entries in the registry", func() {
+				By("updating secret with annotation", func() {
+					owner := owner.DeepCopy()
+					Expect(kube.Update(context, owner)).To(Succeed())
+				})
+
+				Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+				Expect(reg).Should(registry.HasSecret(request.NamespacedName, owner.UID))
+				Expect(reg).Should(registry.HasOwnedSecret(request.NamespacedName, owner.UID, "kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+
+				secrets := corev1.SecretList{}
+				Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+				Expect(secrets).Should(HasSecretsOn(owner.Namespace, "kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+			})
+		})
+
+		When("secret is updated", func() {
+			owner := owner.DeepCopy()
+			owner.Annotations = annotations
+
+			When("annotation is updated", func() {
+				It("should create new owned secret and remove unwanted ones", func() {
+					By("updating secret with annotation", func() {
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
+
+					By("'reconciliating' updated secret", func() {
+						Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+						//NOTE: others fields are test by [When secret is created]
+					})
+
+					By("updating secret with another annotation", func() {
+						owner := owner.DeepCopy()
+						delete(owner.Annotations, controller.AllNamespacesAnnotation)
+
+						owner.Annotations[controller.NamespaceSelectorAnnotation] = "sync=secret"
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
+
+					Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+					Expect(reg).Should(registry.HasSecret(request.NamespacedName, owner.UID))
+					Expect(reg).Should(registry.HasOwnedSecret(request.NamespacedName, owner.UID, "alpha", "bravo"))
+
+					secrets := corev1.SecretList{}
+					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "alpha", "bravo"))
+				})
+			})
+
+			When("content is updated", func() {
+				It("should update owned secret", func() {
+					By("updating secret with annotation", func() {
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
+
+					By("'reconciliating' updated secret", func() {
+						Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+						//NOTE: others fields are test by [When new secret is created]
+					})
+
+					By("updating secret with a new data", func() {
+						owner.Data["username"] = []byte(base64.StdEncoding.EncodeToString([]byte("my-app2")))
+						owner.Data["new_field"] = nil
+						Expect(kube.Update(context, owner)).To(Succeed())
+					})
+
+					Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+					Expect(reg).Should(registry.HasSecret(request.NamespacedName, owner.UID))
+					Expect(reg).Should(registry.HasOwnedSecret(request.NamespacedName, owner.UID, "kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+
+					secrets := corev1.SecretList{}
+					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+
+					Expect(secrets).Should(WithTransform(
+						TransformSecrets(IgnoreOwner(owner), ExtractData),
+						WithTransform(
+							func(i interface{}) map[string][]byte {
+								data := map[string][]byte{}
+								for _, d := range i.([]interface{}) {
+									for k, v := range d.(map[string][]byte) {
+										data[k] = v
+									}
+								}
+								return data
+							},
+							Equal(owner.Data),
+						),
+					))
+				})
+			})
+		})
+
+		When("secret is removed", func() {
+			owner := owner.DeepCopy()
+			owner.Annotations = annotations
+
+			It("should remove all linked entries in the registry", func() {
+				By("updating secret with annotation", func() {
+					Expect(kube.Update(context, owner)).To(Succeed())
+				})
+
+				By("'reconciliating' updated secret", func() {
+					Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+					//NOTE: others fields are test by [When new secret is created]
+				})
+
+				By("deleting secret", func() {
+					Expect(kube.Delete(context, owner)).To(Succeed())
+				})
+
+				Expect(reconcilier.Reconcile(request)).Should(ReconcileSuccessfully())
+				Expect(reg).ShouldNot(registry.HasSecret(request.NamespacedName, owner.UID))
+				Expect(reg).Should(registry.HasOwnedSecret(request.NamespacedName, owner.UID))
+
+				// NOTE: Owned secrets will be removed by Kubernetes itself, thanks to its GC.
+				//       Because the fake-client doesn't implement the latter, we can check if
+				//       the reconcilier deletes them or not.
+				secrets := corev1.SecretList{}
+				Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
+				Expect(secrets).Should(HasSecretsOn("kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+			})
 		})
 	})
 )

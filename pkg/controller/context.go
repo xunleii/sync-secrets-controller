@@ -28,3 +28,12 @@ func NewContext(ctx gocontext.Context, client client.Client) *Context {
 		registry: registry.New(),
 	}
 }
+
+// NewTestContext creates a new context instance for testing purpose.
+func NewTestContext(ctx gocontext.Context, client client.Client, registry *registry.Registry) *Context {
+	return &Context{
+		Context:  ctx,
+		client:   client,
+		registry: registry,
+	}
+}

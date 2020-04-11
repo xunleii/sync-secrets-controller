@@ -60,7 +60,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	_ = mgr.AddHealthzCheck("healthz", func(req *http.Request) error { return nil })
 
 	secretCtrl, err := controller.New("sync-secrets", mgr, controller.Options{
-		Reconciler: &secretReconciler{Context: &c.Context},
+		Reconciler: &SecretReconciler{Context: &c.Context},
 	})
 	if err != nil {
 		klog.Fatalf("Unable to set up individual controller (sync-secrets): %s", err)
@@ -72,7 +72,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	}
 
 	ownedSecretCtrl, err := controller.New("sync-owned-secrets", mgr, controller.Options{
-		Reconciler: &ownedSecretReconcilier{Context: &c.Context},
+		Reconciler: &OwnedSecretReconcilier{Context: &c.Context},
 	})
 	if err != nil {
 		klog.Fatalf("Unable to set up individual controller (sync-owned-secrets): %s", err)
@@ -98,60 +98,3 @@ func (c *Controller) Run(stop <-chan struct{}) {
 		klog.Fatalf("Failed to run overall controller manager: %s", err)
 	}
 }
-
-//func copySecret(client client.Client, owner *corev1.Secret, target types.NamespacedName) error {
-//	copy := &corev1.Secret{
-//		ObjectMeta: v1.ObjectMeta{
-//			Name:        owner.Name,
-//			Namespace:   target.Namespace,
-//			Labels:      owner.Labels,
-//			Annotations: owner.Annotations,
-//			OwnerReferences: []v1.OwnerReference{{
-//				APIVersion: owner.APIVersion,
-//				Kind:       owner.Kind,
-//				Name:       owner.Name,
-//				UID:        owner.UID,
-//			}},
-//		},
-//		Data: owner.Data,
-//	}
-//	delete(copy.Annotations, AllNamespacesAnnotation)
-//	delete(copy.Annotations, NamespaceSelectorAnnotation)
-//
-//	secret := &corev1.Secret{}
-//	err := client.Get(gocontext.TODO(), target, secret)
-//	if errors.IsNotFound(err) {
-//		klog.V(3).Infof("Secret %T %s doesn't exists and must be created", copy, target)
-//		err := client.Create(gocontext.TODO(), copy)
-//		if err != nil {
-//			klog.Errorf("Failed to create %T %s: %s... ignore", copy, target, err)
-//			return err
-//		}
-//		return nil
-//	} else if err != nil {
-//		klog.Errorf("Failed to fetch %T %s: %s... ignore", copy, target, err)
-//		return err
-//	}
-//
-//	if !(len(secret.OwnerReferences) == 1 && secret.OwnerReferences[0].UID == owner.UID) {
-//		klog.Errorf("Secret %T %s is not owned by %s (%s)... ignore", secret, target, owner.Name, owner.UID)
-//		return nil
-//	}
-//
-//	err = client.Update(gocontext.TODO(), copy)
-//	if err != nil {
-//		klog.Errorf("Failed to update %T %s: %s... ignore", secret, target, err)
-//		return err
-//	}
-//	return nil
-//}
-
-//func (ctx Context) DeepCopy() *Context {
-//	var owners sync.Map
-//	var ignoredNamespaces []string
-//
-//	ctx.owners.Range(func(key, value interface{}) bool { owners.Store(key, value); return true })
-//	copy(ignoredNamespaces, ctx.IgnoredNamespaces)
-//
-//	return &Context{owners: &owners, IgnoredNamespaces: ignoredNamespaces}
-//}
