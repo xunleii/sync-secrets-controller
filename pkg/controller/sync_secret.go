@@ -21,6 +21,7 @@ type (
 )
 
 // SynchronizeSecret duplicates the given secret on the target namespaces
+// TODO: Need to remove all owned secret when update
 func SynchronizeSecret(ctx *Context, secret corev1.Secret, targetNamespaces ...string) error {
 	name := types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name}
 	if funk.ContainsString(ctx.IgnoredNamespaces, secret.Namespace) {
