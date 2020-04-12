@@ -2,6 +2,8 @@ module github.com/xunleii/sync-secrets-operator
 
 go 1.14
 
+replace github.com/thoas/go-funk v0.6.0 => github.com/xunleii/go-funk v0.6.1-0.20200413142153-7f7d271e75d3
+
 require (
 	github.com/google/uuid v1.1.1
 	github.com/onsi/ginkgo v1.12.0
@@ -10,7 +12,7 @@ require (
 	github.com/prometheus/common v0.4.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
-	github.com/thoas/go-funk v0.5.0
+	github.com/thoas/go-funk v0.6.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e

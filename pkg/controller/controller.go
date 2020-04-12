@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -36,6 +37,7 @@ type (
 func NewController(metricsBindAddress, healthProbeBindAddress string, ignoredNamespaces []string) *Controller {
 	return &Controller{
 		Context: Context{
+			Context:           context.Background(),
 			IgnoredNamespaces: ignoredNamespaces,
 			registry:          registry.New(),
 		},
