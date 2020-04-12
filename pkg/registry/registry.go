@@ -7,19 +7,19 @@ import (
 )
 
 type (
-	// Registry keeps in memory all states of the managed secretsByUID and their
-	// owned secretsByUID.
+	// Registry keeps in memory all states of the managed secrets and their
+	// owned secrets.
 	// - A managed secret is a secret watched by the controller, which must
 	//   be synced.
 	// - An owned secret is a secret created by the controller, which is a
 	//   copy of a managed secret.
 	Registry struct {
-		// secretsByUID maps all managed secretsByUID with their UID
+		// secretsByUID maps all managed secrets with their UID
 		secretsByUID map[types.UID]*Secret
-		// secretsByName maps all managed secretsByUID with their NamespacedNames
-		secretsByName map[types.NamespacedName]*Secret
-		// secretsByOwnedSecretName maps all managed secret with their owned secret NamespacedNames
+		// secretsByOwnedSecretName maps all managed secrets with their owned secret NamespacedNames
 		secretsByOwnedSecretName map[types.NamespacedName]*Secret
+		// ownedSecretsBySecretUID maps all owned secrets with the owner secret UID
+		ownedSecretsBySecretUID map[types.UID][]types.NamespacedName
 
 		mx sync.RWMutex
 	}
@@ -33,10 +33,36 @@ type (
 func New() *Registry {
 	return &Registry{
 		secretsByUID:             map[types.UID]*Secret{},
-		secretsByName:            map[types.NamespacedName]*Secret{},
 		secretsByOwnedSecretName: map[types.NamespacedName]*Secret{},
+		ownedSecretsBySecretUID:  map[types.UID][]types.NamespacedName{},
 		mx:                       sync.RWMutex{},
 	}
+}
+
+// Secrets returns all register secret's names.
+func (r *Registry) Secrets() []types.NamespacedName {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
+
+	var secrets []types.NamespacedName
+	for _, secret := range r.secretsByUID {
+		secrets = append(secrets, secret.NamespacedName)
+	}
+	return secrets
+}
+
+// SecretWithName returns a registered secret with the given name, or nil
+// if doesn't exists.
+func (r *Registry) SecretWithName(name types.NamespacedName) *Secret {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
+
+	for _, secret := range r.secretsByUID {
+		if secret.NamespacedName == name {
+			return secret
+		}
+	}
+	return nil
 }
 
 // SecretWithUID returns a registered secret with the given UID, or nil
@@ -51,22 +77,20 @@ func (r *Registry) SecretWithUID(uid types.UID) *Secret {
 
 // SecretWithName returns a registered secret with the given NamespacedName,
 // or nil if doesn't exists.
-func (r *Registry) SecretWithName(name types.NamespacedName) *Secret {
-	r.mx.RLock()
-	defer r.mx.RUnlock()
-
-	secret := r.secretsByName[name]
-	return secret
-}
-
-// SecretWithName returns a registered secret with the given NamespacedName,
-// or nil if doesn't exists.
 func (r *Registry) SecretWithOwnedSecretName(ownedSecretName types.NamespacedName) *Secret {
 	r.mx.RLock()
 	defer r.mx.RUnlock()
 
 	secret := r.secretsByOwnedSecretName[ownedSecretName]
 	return secret
+}
+
+// Secrets returns all register owned secret's names.
+func (r *Registry) OwnedSecretsWithUID(uid types.UID) []types.NamespacedName {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
+
+	return r.ownedSecretsBySecretUID[uid]
 }
 
 // secretWithName returns a registered secret with the given name, or nil
@@ -99,7 +123,7 @@ func (r *Registry) RegisterSecret(name types.NamespacedName, uid types.UID) erro
 		UID:            uid,
 	}
 	r.secretsByUID[uid] = secret
-	r.secretsByName[name] = secret
+	r.ownedSecretsBySecretUID[uid] = []types.NamespacedName{}
 	r.mx.Unlock()
 
 	return nil
@@ -114,7 +138,10 @@ func (r *Registry) UnregisterSecret(uid types.UID) error {
 
 	r.mx.Lock()
 	delete(r.secretsByUID, uid)
-	delete(r.secretsByName, secret.NamespacedName)
+	for _, name := range r.ownedSecretsBySecretUID[uid] {
+		delete(r.secretsByOwnedSecretName, name)
+	}
+	delete(r.ownedSecretsBySecretUID, uid)
 	r.mx.Unlock()
 
 	return nil
@@ -133,6 +160,7 @@ func (r *Registry) RegisterOwnedSecret(managerUID types.UID, name types.Namespac
 
 	r.mx.Lock()
 	r.secretsByOwnedSecretName[name] = secret
+	r.ownedSecretsBySecretUID[managerUID] = append(r.ownedSecretsBySecretUID[managerUID], name)
 	r.mx.Unlock()
 
 	return nil
@@ -147,6 +175,19 @@ func (r *Registry) UnregisterOwnedSecret(name types.NamespacedName) error {
 
 	r.mx.Lock()
 	delete(r.secretsByOwnedSecretName, name)
+
+	n := -1
+	ownedList := r.ownedSecretsBySecretUID[secret.UID]
+	for i, owned := range ownedList {
+		if owned == name {
+			n = i
+			break
+		}
+	}
+	if n > -1 {
+		ownedList[n] = ownedList[len(ownedList)-1]
+		r.ownedSecretsBySecretUID[secret.UID] = ownedList[:len(ownedList)-1]
+	}
 	r.mx.Unlock()
 
 	return nil
