@@ -1,6 +1,23 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Code Refactoring
+- rewrote controller in order to valid specs
+- rewrote controller & update tests
+- rewrote ownedSecretReconciler with SynchronizeSecret
+- rewrote secretReconciler with SynchronizeSecret
+- rename context in Context
+
+### Code Testing
+- rewrote all test with more specs
+- add SynchronizeSecret tests
+
+### Features
+- add missing registry methods & update tests
+- add target on SynchronizeSecret
+- add synchronizeSecret methods
+- add internal secret registry
+
 
 <a name="v0.1.1"></a>
 ## [v0.1.1] - 2020-04-04
