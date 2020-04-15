@@ -35,11 +35,11 @@ validating the given label selector
 - Automatically update "slave" secrets when the original is update
 - Automatically restore "slave" secret when it is manually modified
 - Automatically remove "slave" secrets when the original is removed
+- Automatically remove/update "slave" secrets when the original secret annotations are modified/removed
+- Automatically recreate "slave" secret when it is removed
 
 **Currently, this operator cannot:**
 
-- Remove "slave" secrets when annotations are modified
-- Recreate "slave" secret when it is removed
 - Synchronize a new namespace when a secret is already "synchronized"
 
 ## Example

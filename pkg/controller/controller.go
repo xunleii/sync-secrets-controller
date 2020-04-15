@@ -1,17 +1,12 @@
 package controller
 
 import (
-	gocontext "context"
+	"context"
 	"net/http"
-	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	kconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -19,24 +14,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/xunleii/sync-secrets-operator/pkg/registry"
 )
 
 const (
 	prefixAnnotation            = "secret.sync.klst.pw"
-	allNamespacesAnnotation     = prefixAnnotation + "/all-namespaces"
-	namespaceSelectorAnnotation = prefixAnnotation + "/namespace-selector"
+	AllNamespacesAnnotation     = prefixAnnotation + "/all-namespaces"
+	NamespaceSelectorAnnotation = prefixAnnotation + "/namespace-selector"
 
 	requeueAfter = 5 * time.Second
 )
 
 type (
-	context struct {
-		ignoredNamespaces []string
-		owners            *sync.Map
-	}
-
 	Controller struct {
-		context
+		Context
 		metricsBindAddress     string
 		healthProbeBindAddress string
 	}
@@ -44,9 +36,10 @@ type (
 
 func NewController(metricsBindAddress, healthProbeBindAddress string, ignoredNamespaces []string) *Controller {
 	return &Controller{
-		context: context{
-			ignoredNamespaces: ignoredNamespaces,
-			owners:            &sync.Map{},
+		Context: Context{
+			Context:           context.Background(),
+			IgnoredNamespaces: ignoredNamespaces,
+			registry:          registry.New(),
 		},
 		metricsBindAddress:     metricsBindAddress,
 		healthProbeBindAddress: healthProbeBindAddress,
@@ -63,12 +56,13 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	if err != nil {
 		klog.Fatalf("Unable to set up overall controller manager: %s", err)
 	}
+	c.client = mgr.GetClient()
 
 	_ = mgr.AddReadyzCheck("readyz", func(req *http.Request) error { return nil })
 	_ = mgr.AddHealthzCheck("healthz", func(req *http.Request) error { return nil })
 
 	secretCtrl, err := controller.New("sync-secrets", mgr, controller.Options{
-		Reconciler: &reconcileSecret{context: &c.context, client: mgr.GetClient()},
+		Reconciler: &SecretReconciler{Context: &c.Context},
 	})
 	if err != nil {
 		klog.Fatalf("Unable to set up individual controller (sync-secrets): %s", err)
@@ -80,7 +74,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	}
 
 	ownedSecretCtrl, err := controller.New("sync-owned-secrets", mgr, controller.Options{
-		Reconciler: &reconcileOwnedSecret{context: &c.context, client: mgr.GetClient()},
+		Reconciler: &OwnedSecretReconcilier{Context: &c.Context},
 	})
 	if err != nil {
 		klog.Fatalf("Unable to set up individual controller (sync-owned-secrets): %s", err)
@@ -105,61 +99,4 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	if err != nil {
 		klog.Fatalf("Failed to run overall controller manager: %s", err)
 	}
-}
-
-func copySecret(client client.Client, owner *corev1.Secret, target types.NamespacedName) error {
-	copy := &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name:        owner.Name,
-			Namespace:   target.Namespace,
-			Labels:      owner.Labels,
-			Annotations: owner.Annotations,
-			OwnerReferences: []v1.OwnerReference{{
-				APIVersion: owner.APIVersion,
-				Kind:       owner.Kind,
-				Name:       owner.Name,
-				UID:        owner.UID,
-			}},
-		},
-		Data: owner.Data,
-	}
-	delete(copy.Annotations, allNamespacesAnnotation)
-	delete(copy.Annotations, namespaceSelectorAnnotation)
-
-	secret := &corev1.Secret{}
-	err := client.Get(gocontext.TODO(), target, secret)
-	if errors.IsNotFound(err) {
-		klog.V(3).Infof("Secret %T %s doesn't exists and must be created", copy, target)
-		err := client.Create(gocontext.TODO(), copy)
-		if err != nil {
-			klog.Errorf("Failed to create %T %s: %s... ignore", copy, target, err)
-			return err
-		}
-		return nil
-	} else if err != nil {
-		klog.Errorf("Failed to fetch %T %s: %s... ignore", copy, target, err)
-		return err
-	}
-
-	if !(len(secret.OwnerReferences) == 1 && secret.OwnerReferences[0].UID == owner.UID) {
-		klog.Errorf("Secret %T %s is not owned by %s (%s)... ignore", secret, target, owner.Name, owner.UID)
-		return nil
-	}
-
-	err = client.Update(gocontext.TODO(), copy)
-	if err != nil {
-		klog.Errorf("Failed to update %T %s: %s... ignore", secret, target, err)
-		return err
-	}
-	return nil
-}
-
-func (ctx context) DeepCopy() *context {
-	var owners sync.Map
-	var ignoredNamespaces []string
-
-	ctx.owners.Range(func(key, value interface{}) bool { owners.Store(key, value); return true })
-	copy(ignoredNamespaces, ctx.ignoredNamespaces)
-
-	return &context{owners: &owners, ignoredNamespaces: ignoredNamespaces}
 }
