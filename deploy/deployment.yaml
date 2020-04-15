@@ -24,7 +24,7 @@ spec:
         - -v7
         - --ignore-namespaces=kube-system
         name: controller
-        image: quay.io/klst.pw/sync-secrets-operator:v0.0.2
+        image: quay.io/klst.pw/sync-secrets-operator:v0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
