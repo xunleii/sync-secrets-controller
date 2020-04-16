@@ -2,6 +2,7 @@
 ## [Unreleased]
 
 ### Code Refactoring
+- move methods in appropriate files
 - rewrote controller in order to valid specs
 - rewrote controller & update tests
 - rewrote ownedSecretReconciler with SynchronizeSecret
@@ -9,10 +10,13 @@
 - rename context in Context
 
 ### Code Testing
+- implement namespace reconcilier tests
 - rewrote all test with more specs
 - add SynchronizeSecret tests
 
 ### Features
+- implement namespace reconcilier
+- link namespace reconciler with manager
 - add missing registry methods & update tests
 - add target on SynchronizeSecret
 - add synchronizeSecret methods
