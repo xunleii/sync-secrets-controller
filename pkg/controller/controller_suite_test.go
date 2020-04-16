@@ -42,7 +42,7 @@ var (
 		Expect(kube.Create(context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "alpha", Labels: map[string]string{"sync": "secret"}}})).To(Succeed())
 		Expect(kube.Create(context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "bravo", Labels: map[string]string{"sync": "secret"}}})).To(Succeed())
 	}
-	registry = RegistryMatcher{namespaces: []string{"kube-system", "kube-public", "kube-lease", "default", "alpha", "bravo"}}
+	registry = RegistryMatcher{namespaces: []string{"kube-system", "kube-public", "kube-lease", "default", "alpha", "bravo", "charlie"}}
 )
 
 // WithTransform methods
