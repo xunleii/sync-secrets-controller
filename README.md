@@ -32,15 +32,12 @@ validating the given label selector
 
 - Synchronize a secret over all namespaces
 - Synchronize a secret on specifics namespaces, thanks label selectors
+- Synchronize on a new namespace when a secret is already "synchronized"
 - Automatically update "slave" secrets when the original is update
 - Automatically restore "slave" secret when it is manually modified
 - Automatically remove "slave" secrets when the original is removed
 - Automatically remove/update "slave" secrets when the original secret annotations are modified/removed
 - Automatically recreate "slave" secret when it is removed
-
-**Currently, this operator cannot:**
-
-- Synchronize a new namespace when a secret is already "synchronized"
 
 ## Example
 
