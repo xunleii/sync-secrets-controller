@@ -18,13 +18,7 @@ import (
 	"github.com/xunleii/sync-secrets-operator/pkg/registry"
 )
 
-const (
-	prefixAnnotation            = "secret.sync.klst.pw"
-	AllNamespacesAnnotation     = prefixAnnotation + "/all-namespaces"
-	NamespaceSelectorAnnotation = prefixAnnotation + "/namespace-selector"
-
-	requeueAfter = 5 * time.Second
-)
+const requeueAfter = 5 * time.Second
 
 type (
 	Controller struct {
