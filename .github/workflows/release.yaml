@@ -66,10 +66,10 @@ jobs:
           --label=org.opencontainers.image.revision=${{github.sha}}                       \
           --label=org.opencontainers.image.version=${version}                             \
           --build-arg=ARCH=${ARCH}                                                        \
-          --tag quay.io/klst.pw/sync-secrets-operator:${version}-${ARCH}${{matrix.type}}  \
+          --tag quay.io/klst.pw/sync-secrets-controller:${version}-${ARCH}${{matrix.type}}  \
         -f Dockerfile${{matrix.type}} .
     - name: Publish Docker images
-      run: docker push quay.io/klst.pw/sync-secrets-operator:${version}-${ARCH}${{matrix.type}}
+      run: docker push quay.io/klst.pw/sync-secrets-controller:${version}-${ARCH}${{matrix.type}}
 
   release-docker-manifests:
     name: Build Docker manifests
@@ -110,24 +110,24 @@ jobs:
       env:
         DOCKER_CLI_EXPERIMENTAL: enabled
       run: |
-        docker manifest create quay.io/klst.pw/sync-secrets-operator:${version}${{matrix.type}} \
-          quay.io/klst.pw/sync-secrets-operator:${version}-arm32v7${{matrix.type}} \
-          quay.io/klst.pw/sync-secrets-operator:${version}-arm64v8${{matrix.type}} \
-          quay.io/klst.pw/sync-secrets-operator:${version}-amd64${{matrix.type}}
+        docker manifest create quay.io/klst.pw/sync-secrets-controller:${version}${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-controller:${version}-arm32v7${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-controller:${version}-arm64v8${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-controller:${version}-amd64${{matrix.type}}
 
-        docker manifest create quay.io/klst.pw/sync-secrets-operator:${version%.*}${{matrix.type}} \
-          quay.io/klst.pw/sync-secrets-operator:${version}-arm32v7${{matrix.type}} \
-          quay.io/klst.pw/sync-secrets-operator:${version}-arm64v8${{matrix.type}} \
-          quay.io/klst.pw/sync-secrets-operator:${version}-amd64${{matrix.type}}
+        docker manifest create quay.io/klst.pw/sync-secrets-controller:${version%.*}${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-controller:${version}-arm32v7${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-controller:${version}-arm64v8${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-controller:${version}-amd64${{matrix.type}}
 
-        docker manifest create quay.io/klst.pw/sync-secrets-operator:${version%.*.*}${{matrix.type}} \
-          quay.io/klst.pw/sync-secrets-operator:${version}-arm32v7${{matrix.type}} \
-          quay.io/klst.pw/sync-secrets-operator:${version}-arm64v8${{matrix.type}} \
-          quay.io/klst.pw/sync-secrets-operator:${version}-amd64${{matrix.type}}
+        docker manifest create quay.io/klst.pw/sync-secrets-controller:${version%.*.*}${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-controller:${version}-arm32v7${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-controller:${version}-arm64v8${{matrix.type}} \
+          quay.io/klst.pw/sync-secrets-controller:${version}-amd64${{matrix.type}}
 
-        docker manifest push quay.io/klst.pw/sync-secrets-operator:${version}${{matrix.type}}
-        docker manifest push quay.io/klst.pw/sync-secrets-operator:${version%.*}${{matrix.type}}
-        docker manifest push quay.io/klst.pw/sync-secrets-operator:${version%.*.*}${{matrix.type}}
+        docker manifest push quay.io/klst.pw/sync-secrets-controller:${version}${{matrix.type}}
+        docker manifest push quay.io/klst.pw/sync-secrets-controller:${version%.*}${{matrix.type}}
+        docker manifest push quay.io/klst.pw/sync-secrets-controller:${version%.*.*}${{matrix.type}}
 
   release-github:
     name: Release tag to Github
@@ -174,14 +174,14 @@ jobs:
         cat <<EOF >> .github-release.md
 
         ## Docker
-        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version}\`
-        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version%.*}\`
-        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version%.*.*}\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-controller:${version}\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-controller:${version%.*}\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-controller:${version%.*.*}\`
 
         ### For debug purpose
-        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version}-debug\`
-        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version%.*}-debug\`
-        - \`docker pull quay.io/klst.pw/sync-secrets-operator:${version%.*.*}-debug\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-controller:${version}-debug\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-controller:${version%.*}-debug\`
+        - \`docker pull quay.io/klst.pw/sync-secrets-controller:${version%.*.*}-debug\`
         EOF
     - name: Github Release
       uses: softprops/action-gh-release@v1

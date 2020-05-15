@@ -58,5 +58,5 @@ jobs:
           --label=org.opencontainers.image.revision=${{github.sha}}                       \
           --label=org.opencontainers.image.version=${version}                             \
           --build-arg=ARCH=${ARCH}                                                        \
-          --tag quay.io/klst.pw/sync-secrets-operator:${version}-${ARCH}${{matrix.type}}  \
+          --tag quay.io/klst.pw/sync-secrets-controller:${version}-${ARCH}${{matrix.type}}  \
         -f Dockerfile${{matrix.type}} .

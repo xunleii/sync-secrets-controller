@@ -2,21 +2,24 @@ package controller_test
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
+	"github.com/thoas/go-funk"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ktypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/xunleii/sync-secrets-operator/pkg/controller"
-	registrypkg "github.com/xunleii/sync-secrets-operator/pkg/registry"
+	"github.com/xunleii/sync-secrets-controller/pkg/controller"
+	registrypkg "github.com/xunleii/sync-secrets-controller/pkg/registry"
 )
 
 func init() {
@@ -93,7 +96,6 @@ var (
 	}
 
 	ExtractSecretNamespace = func(i interface{}) interface{} { return i.(corev1.Secret).Namespace }
-	ExtractData            = func(i interface{}) interface{} { return i.(corev1.Secret).Data }
 )
 
 // Custom Gomega matchers
@@ -113,6 +115,27 @@ var (
 		return WithTransform(
 			TransformSecrets(ExtractSecretNamespace),
 			ConsistOf(inamespaces...),
+		)
+	}
+	ConsistOfSecrets = func(ref corev1.Secret, count int) types.GomegaMatcher {
+		getRaw := func(secret corev1.Secret) string {
+			secret.SetNamespace("")
+			secret.SetGroupVersionKind(schema.GroupVersionKind{})
+			secret.SetResourceVersion("")
+			return fmt.Sprintf("%#v", secret)
+		}
+
+		var expect []interface{}
+		refRaw := getRaw(*ref.DeepCopy())
+		for i := 0; i < count; i++ {
+			expect = append(expect, refRaw)
+		}
+
+		return WithTransform(
+			func(objs []interface{}) []string {
+				return funk.Map(objs, func(i interface{}) string { return getRaw(i.(corev1.Secret)) }).([]string)
+			},
+			ConsistOf(expect...),
 		)
 	}
 )

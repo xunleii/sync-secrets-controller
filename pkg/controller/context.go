@@ -5,7 +5,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/xunleii/sync-secrets-operator/pkg/registry"
+	"github.com/xunleii/sync-secrets-controller/pkg/registry"
 )
 
 type (
@@ -13,7 +13,9 @@ type (
 	// synchronize secrets, like kubernetes client or controller configuration.
 	Context struct {
 		gocontext.Context
-		IgnoredNamespaces []string
+		IgnoredNamespaces    []string
+		ProtectedLabels      []string
+		ProtectedAnnotations []string
 
 		client   client.Client
 		registry *registry.Registry

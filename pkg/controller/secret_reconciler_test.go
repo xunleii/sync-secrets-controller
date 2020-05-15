@@ -15,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/xunleii/sync-secrets-operator/pkg/controller"
-	registrypkg "github.com/xunleii/sync-secrets-operator/pkg/registry"
+	"github.com/xunleii/sync-secrets-controller/pkg/controller"
+	registrypkg "github.com/xunleii/sync-secrets-controller/pkg/registry"
 )
 
 var (
@@ -31,13 +31,34 @@ var (
 			owner = corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "fake-secret", Namespace: "default", UID: uid,
-					Annotations: map[string]string{},
+					Annotations: map[string]string{
+						"unprotected-annotation": "true",
+						"protected-annotation": "true",
+					},
+					Labels: map[string]string{
+						"unprotected-label": "true",
+						"protected-label": "true",
+					},
 				},
 				Type: "Opaque",
 				Data: map[string][]byte{
 					"username": []byte(base64.StdEncoding.EncodeToString([]byte("my-app"))),
 					"password": []byte(base64.StdEncoding.EncodeToString([]byte("39528$vdg7Jb"))),
 				},
+			}
+			owned = corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            owner.Name,
+					OwnerReferences: []metav1.OwnerReference{{APIVersion: "v1", Kind: "Secret", Name: owner.Name, UID: owner.UID}},
+					Annotations: map[string]string{
+						"unprotected-annotation": "true",
+					},
+					Labels: map[string]string{
+						"unprotected-label": "true",
+					},
+				},
+				Type: owner.Type,
+				Data: owner.Data,
 			}
 			request = reconcile.Request{NamespacedName: types.NamespacedName{Namespace: owner.Namespace, Name: owner.Name}}
 		)
@@ -46,6 +67,8 @@ var (
 			kube = fake.NewFakeClientWithScheme(scheme.Scheme)
 			reg = registrypkg.New()
 			context = controller.NewTestContext(gocontext.TODO(), kube, reg)
+			context.ProtectedAnnotations = []string{"protected-annotation"}
+			context.ProtectedLabels = []string{"protected-label"}
 			reconcilier = &controller.SecretReconciler{context}
 
 			CreateNamespaces(context, kube)
@@ -70,7 +93,7 @@ var (
 
 		When("secret's namespace is ignored", func() {
 			owner := owner.DeepCopy()
-			It("should ingore the request", func() {
+			It("should ignore the request", func() {
 				context.IgnoredNamespaces = []string{"default"}
 				reconcilier = &controller.SecretReconciler{context}
 
@@ -117,7 +140,7 @@ var (
 
 		When("'"+controller.AllNamespacesAnnotation+"' annotation is given", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations = map[string]string{controller.AllNamespacesAnnotation: "true"}
+			owner.Annotations[controller.AllNamespacesAnnotation] = "true"
 
 			When("annotation is invalid", func() {
 				owner := owner.DeepCopy()
@@ -152,6 +175,7 @@ var (
 					secrets := corev1.SecretList{}
 					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
 					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "kube-system", "kube-public", "kube-lease", "bravo"))
+					Expect(secrets).Should(WithoutOwner(owner, ConsistOfSecrets(owned, 4)))
 				})
 			})
 
@@ -168,13 +192,14 @@ var (
 					secrets := corev1.SecretList{}
 					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
 					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+					Expect(secrets).Should(WithoutOwner(owner, ConsistOfSecrets(owned, 5)))
 				})
 			})
 		})
 
 		When("'"+controller.NamespaceSelectorAnnotation+"' annotation is given", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations = map[string]string{controller.NamespaceSelectorAnnotation: "sync=secret"}
+			owner.Annotations[controller.NamespaceSelectorAnnotation] = "sync=secret"
 
 			When("annotation is invalid", func() {
 				It("should ignore the request", func() {
@@ -209,6 +234,7 @@ var (
 					secrets := corev1.SecretList{}
 					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
 					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "bravo"))
+					Expect(secrets).Should(WithoutOwner(owner, ConsistOfSecrets(owned, 1)))
 				})
 			})
 
@@ -225,11 +251,16 @@ var (
 					secrets := corev1.SecretList{}
 					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
 					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "alpha", "bravo"))
+					Expect(secrets).Should(WithoutOwner(owner, ConsistOfSecrets(owned, 2)))
 				})
 			})
 		})
 
-		annotations := map[string]string{controller.AllNamespacesAnnotation: "true"}
+		annotations := map[string]string{
+			"unprotected-annotation": "true",
+			"protected-annotation": "true",
+			controller.AllNamespacesAnnotation: "true",
+		}
 
 		When("secret is created", func() {
 			owner := owner.DeepCopy()
@@ -248,6 +279,7 @@ var (
 				secrets := corev1.SecretList{}
 				Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
 				Expect(secrets).Should(HasSecretsOn(owner.Namespace, "kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+				Expect(secrets).Should(WithoutOwner(owner, ConsistOfSecrets(owned, 5)))
 			})
 		})
 
@@ -281,6 +313,7 @@ var (
 					secrets := corev1.SecretList{}
 					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
 					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "alpha", "bravo"))
+					Expect(secrets).Should(WithoutOwner(owner, ConsistOfSecrets(owned, 2)))
 				})
 			})
 
@@ -309,21 +342,10 @@ var (
 					Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
 					Expect(secrets).Should(HasSecretsOn(owner.Namespace, "kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
 
-					Expect(secrets).Should(WithTransform(
-						TransformSecrets(IgnoreOwner(owner), ExtractData),
-						WithTransform(
-							func(i interface{}) map[string][]byte {
-								data := map[string][]byte{}
-								for _, d := range i.([]interface{}) {
-									for k, v := range d.(map[string][]byte) {
-										data[k] = v
-									}
-								}
-								return data
-							},
-							Equal(owner.Data),
-						),
-					))
+					owned := owned.DeepCopy()
+					owned.Data["username"] = []byte(base64.StdEncoding.EncodeToString([]byte("my-app2")))
+					owned.Data["new_field"] = nil
+					Expect(secrets).Should(WithoutOwner(owner, ConsistOfSecrets(*owned, 5)))
 				})
 			})
 		})
@@ -356,6 +378,7 @@ var (
 				secrets := corev1.SecretList{}
 				Expect(kube.List(context, &secrets, &client.ListOptions{})).To(Succeed())
 				Expect(secrets).Should(HasSecretsOn("kube-system", "kube-public", "kube-lease", "alpha", "bravo"))
+				Expect(secrets).Should(WithoutOwner(owner, ConsistOfSecrets(owned, 5)))
 			})
 		})
 	})

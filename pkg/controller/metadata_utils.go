@@ -64,3 +64,19 @@ func listNamespacesFromAnnotations(ctx *Context, secret corev1.Secret) ([]string
 	}
 	return namespaces, nil
 }
+
+// excludeProtectedMetadata removes all protected labels or annotations from the
+// given secret. A protected labels (or annotations) is a labels which must not
+// be copied to an owned secret. Theses protected fields are provided by the
+// end user.
+func excludeProtectedMetadata(ctx *Context, secret *corev1.Secret) *corev1.Secret {
+	delete(secret.Annotations, AllNamespacesAnnotation)
+	delete(secret.Annotations, NamespaceSelectorAnnotation)
+	for _, annotation := range ctx.ProtectedAnnotations {
+		delete(secret.Annotations, annotation)
+	}
+	for _, label := range ctx.ProtectedLabels {
+		delete(secret.Labels, label)
+	}
+	return secret
+}
