@@ -2,9 +2,11 @@
 ## [Unreleased]
 
 ### Code Testing
+- prepare tests for origin metadata
 - prepare tests for the protection feature
 
 ### Features
+- implements origin metadata
 - implements fields protection feature
 - add protected labels and annotation flags
 
