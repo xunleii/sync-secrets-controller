@@ -26,13 +26,12 @@ type (
 	}
 )
 
-func NewController(metricsBindAddress, healthProbeBindAddress string, ignoredNamespaces []string) *Controller {
+func NewController(metricsBindAddress, healthProbeBindAddress string, ctx Context) *Controller {
+	ctx.Context = context.TODO()
+	ctx.registry = registry.New()
+
 	return &Controller{
-		Context: Context{
-			Context:           context.Background(),
-			IgnoredNamespaces: ignoredNamespaces,
-			registry:          registry.New(),
-		},
+		Context:                ctx,
 		metricsBindAddress:     metricsBindAddress,
 		healthProbeBindAddress: healthProbeBindAddress,
 	}

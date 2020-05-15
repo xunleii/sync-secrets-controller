@@ -13,7 +13,9 @@ type (
 	// synchronize secrets, like kubernetes client or controller configuration.
 	Context struct {
 		gocontext.Context
-		IgnoredNamespaces []string
+		IgnoredNamespaces    []string
+		ProtectedLabels      []string
+		ProtectedAnnotations []string
 
 		client   client.Client
 		registry *registry.Registry

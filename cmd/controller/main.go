@@ -19,12 +19,15 @@ const (
 )
 
 func main() {
-	var ignoreNamespaces []string
+	var ctx controller.Context
 	var metricsBindAddress, healthProbeBindAddress string
 
 	pflag.StringVar(&metricsBindAddress, "metrics-bind-address", ":8080", "Address to bind to access to the metrics")
 	pflag.StringVar(&healthProbeBindAddress, "health-probe-bind-address", ":8081", "Address to bind to access to health probes")
-	pflag.StringSliceVar(&ignoreNamespaces, "ignore-namespaces", []string{"kube-system"}, "List of namespaces to be ignored by the controller")
+	pflag.StringSliceVar(&ctx.IgnoredNamespaces, "ignore-namespaces", []string{"kube-system"}, "List of namespaces to be ignored by the controller")
+
+	pflag.StringSliceVar(&ctx.ProtectedLabels, "protected-labels", nil, "List of protected labels which must not be copied")
+	pflag.StringSliceVar(&ctx.ProtectedAnnotations, "protected-annotations", nil, "List of protected annotations which must not be copied")
 
 	logs.InitLogs()
 	kflag.InitFlags()
@@ -33,6 +36,6 @@ func main() {
 	klog.V(4).Infof(version.Print(controllerName))
 	metrics.Registry.MustRegister(version.NewCollector(controllerNameMetric))
 
-	ctrl := controller.NewController(metricsBindAddress, healthProbeBindAddress, ignoreNamespaces)
+	ctrl := controller.NewController(metricsBindAddress, healthProbeBindAddress, ctx)
 	ctrl.Run(signals.SetupSignalHandler())
 }
