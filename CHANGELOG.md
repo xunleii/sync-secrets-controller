@@ -1,6 +1,13 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Code Testing
+- prepare tests for the protection feature
+
+### Features
+- implements fields protection feature
+- add protected labels and annotation flags
+
 
 <a name="v0.2.0"></a>
 ## [v0.2.0] - 2020-04-16
@@ -40,7 +47,7 @@
 ## [v0.1.0] - 2020-03-31
 ### Code Refactoring
 - clean CI files & removed old ones
-- rename controller to controller
+- rename controller to operator
 - clean controller manager
 
 ### Code Testing
