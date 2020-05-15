@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/name: sync-secrets
-    app.kubernetes.io/version: 0.1.0
+    app.kubernetes.io/version: 0.2.1
     app.kubernetes.io/component: controller
     app.kubernetes.io/part-of: sync-secrets-controller
   name: sync-secrets-controller
