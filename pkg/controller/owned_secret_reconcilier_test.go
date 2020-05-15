@@ -33,6 +33,12 @@ var (
 					Name: "fake-secret", Namespace: "default", UID: uid,
 					Annotations: map[string]string{
 						controller.NamespaceSelectorAnnotation: "sync=secret",
+						"unprotected-annotation": "true",
+						"protected-annotation": "true",
+					},
+					Labels: map[string]string{
+						"unprotected-label": "true",
+						"protected-label": "true",
 					},
 				},
 				Type: "Opaque",
@@ -45,6 +51,12 @@ var (
 				ObjectMeta: metav1.ObjectMeta{
 					Name: owner.Name, Namespace: "alpha",
 					OwnerReferences: []metav1.OwnerReference{{APIVersion: "v1", Kind: "Secret", Name: owner.Name, UID: owner.UID}},
+					Annotations: map[string]string{
+						"unprotected-annotation": "true",
+					},
+					Labels: map[string]string{
+						"unprotected-label": "true",
+					},
 				},
 				Type: owner.Type,
 				Data: owner.Data,
@@ -56,6 +68,8 @@ var (
 			kube = fake.NewFakeClientWithScheme(scheme.Scheme)
 			reg = registrypkg.New()
 			context = controller.NewTestContext(gocontext.TODO(), kube, reg)
+			context.ProtectedAnnotations = []string{"protected-annotation"}
+			context.ProtectedLabels = []string{"protected-label"}
 			reconcilier = &controller.OwnedSecretReconcilier{context}
 
 			CreateNamespaces(context, kube)
