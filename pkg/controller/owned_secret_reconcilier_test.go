@@ -32,13 +32,13 @@ var (
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "fake-secret", Namespace: "default", UID: uid,
 					Annotations: map[string]string{
-						controller.NamespaceSelectorAnnotation: "sync=secret",
-						"unprotected-annotation": "true",
-						"protected-annotation": "true",
+						controller.NamespaceSelectorAnnotationKey: "sync=secret",
+						"unprotected-annotation":                  "true",
+						"protected-annotation":                    "true",
 					},
 					Labels: map[string]string{
 						"unprotected-label": "true",
-						"protected-label": "true",
+						"protected-label":   "true",
 					},
 				},
 				Type: "Opaque",
@@ -55,7 +55,9 @@ var (
 						"unprotected-annotation": "true",
 					},
 					Labels: map[string]string{
-						"unprotected-label": "true",
+						controller.OriginNameLabelsKey:      owner.GetName(),
+						controller.OriginNamespaceLabelsKey: owner.GetNamespace(),
+						"unprotected-label":                 "true",
 					},
 				},
 				Type: owner.Type,

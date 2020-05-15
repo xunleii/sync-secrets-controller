@@ -59,6 +59,7 @@ func SynchronizeOwnedSecret(ctx *Context, secret corev1.Secret, namespace string
 			{APIVersion: "v1", Kind: "Secret", Name: secret.Name, UID: secret.UID},
 		},
 	}
+	template = assignOriginMetadata(template, &secret)
 	template = excludeProtectedMetadata(ctx, template)
 
 	klog.V(3).Infof("update %T %s", secret, name)

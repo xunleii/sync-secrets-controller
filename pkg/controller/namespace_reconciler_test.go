@@ -31,7 +31,7 @@ var (
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "fake-secret-a", Namespace: "default", UID: uuid.NewUUID(),
 					Annotations: map[string]string{
-						controller.NamespaceSelectorAnnotation: "sync=secret",
+						controller.NamespaceSelectorAnnotationKey: "sync=secret",
 					},
 				},
 				Type: "Opaque",
@@ -44,7 +44,7 @@ var (
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "fake-secret-b", Namespace: "default", UID: uuid.NewUUID(),
 					Annotations: map[string]string{
-						controller.AllNamespacesAnnotation: "true",
+						controller.NamespaceAllAnnotationKey: "true",
 					},
 				},
 				Type: "Opaque",
@@ -91,8 +91,8 @@ var (
 		})
 
 		When("namespace label matches annotations", func() {
-			When("namespace match only '"+controller.AllNamespacesAnnotation+"'", func() {
-				It("should synchronize only secrets with '"+controller.AllNamespacesAnnotation+"'", func() {
+			When("namespace match only '"+controller.NamespaceAllAnnotationKey+"'", func() {
+				It("should synchronize only secrets with '"+controller.NamespaceAllAnnotationKey+"'", func() {
 					By("creating new namespace 'charlie' without labels", func() {
 						namespace := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "charlie"}}
 						Expect(kube.Create(context, &namespace)).To(Succeed())
