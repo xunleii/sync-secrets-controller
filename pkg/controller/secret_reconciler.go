@@ -90,8 +90,7 @@ func SynchronizeSecret(ctx *Context, secret corev1.Secret) error {
 			{APIVersion: "v1", Kind: "Secret", Name: secret.Name, UID: secret.UID},
 		},
 	}
-	delete(template.Annotations, AllNamespacesAnnotation)
-	delete(template.Annotations, NamespaceSelectorAnnotation)
+	template = excludeProtectedMetadata(ctx, template)
 
 	for _, namespace := range unsyncedNamespaces {
 		secret := template.DeepCopy()

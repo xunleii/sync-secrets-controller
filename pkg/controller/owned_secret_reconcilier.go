@@ -59,8 +59,7 @@ func SynchronizeOwnedSecret(ctx *Context, secret corev1.Secret, namespace string
 			{APIVersion: "v1", Kind: "Secret", Name: secret.Name, UID: secret.UID},
 		},
 	}
-	delete(template.Annotations, AllNamespacesAnnotation)
-	delete(template.Annotations, NamespaceSelectorAnnotation)
+	template = excludeProtectedMetadata(ctx, template)
 
 	klog.V(3).Infof("update %T %s", secret, name)
 	err := ctx.client.Update(ctx, template)
