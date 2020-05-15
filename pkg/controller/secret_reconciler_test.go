@@ -33,11 +33,11 @@ var (
 					Name: "fake-secret", Namespace: "default", UID: uid,
 					Annotations: map[string]string{
 						"unprotected-annotation": "true",
-						"protected-annotation": "true",
+						"protected-annotation":   "true",
 					},
 					Labels: map[string]string{
 						"unprotected-label": "true",
-						"protected-label": "true",
+						"protected-label":   "true",
 					},
 				},
 				Type: "Opaque",
@@ -51,10 +51,12 @@ var (
 					Name:            owner.Name,
 					OwnerReferences: []metav1.OwnerReference{{APIVersion: "v1", Kind: "Secret", Name: owner.Name, UID: owner.UID}},
 					Annotations: map[string]string{
-						"unprotected-annotation": "true",
+						"unprotected-annotation":                "true",
 					},
 					Labels: map[string]string{
-						"unprotected-label": "true",
+						controller.OriginNameLabelsKey:      owner.GetName(),
+						controller.OriginNamespaceLabelsKey: owner.GetNamespace(),
+						"unprotected-label":                 "true",
 					},
 				},
 				Type: owner.Type,
@@ -123,8 +125,8 @@ var (
 			It("should ignore the request", func() {
 				By("updating secret with both annotation", func() {
 					owner.Annotations = map[string]string{
-						controller.AllNamespacesAnnotation:     "true",
-						controller.NamespaceSelectorAnnotation: "sync=secret",
+						controller.NamespaceAllAnnotationKey:      "true",
+						controller.NamespaceSelectorAnnotationKey: "sync=secret",
 					}
 					Expect(kube.Update(context, owner)).To(Succeed())
 				})
@@ -138,15 +140,15 @@ var (
 			})
 		})
 
-		When("'"+controller.AllNamespacesAnnotation+"' annotation is given", func() {
+		When("'"+controller.NamespaceAllAnnotationKey+"' annotation is given", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations[controller.AllNamespacesAnnotation] = "true"
+			owner.Annotations[controller.NamespaceAllAnnotationKey] = "true"
 
 			When("annotation is invalid", func() {
 				owner := owner.DeepCopy()
 				It("should ignore the request", func() {
 					By("updating secret with invalid annotation", func() {
-						owner.Annotations = map[string]string{controller.AllNamespacesAnnotation: "invalid"}
+						owner.Annotations = map[string]string{controller.NamespaceAllAnnotationKey: "invalid"}
 						Expect(kube.Update(context, owner)).To(Succeed())
 					})
 
@@ -197,15 +199,15 @@ var (
 			})
 		})
 
-		When("'"+controller.NamespaceSelectorAnnotation+"' annotation is given", func() {
+		When("'"+controller.NamespaceSelectorAnnotationKey+"' annotation is given", func() {
 			owner := owner.DeepCopy()
-			owner.Annotations[controller.NamespaceSelectorAnnotation] = "sync=secret"
+			owner.Annotations[controller.NamespaceSelectorAnnotationKey] = "sync=secret"
 
 			When("annotation is invalid", func() {
 				It("should ignore the request", func() {
 					owner := owner.DeepCopy()
 					By("updating secret with invalid annotation", func() {
-						owner.Annotations = map[string]string{controller.NamespaceSelectorAnnotation: "!!!invalid!!!"}
+						owner.Annotations = map[string]string{controller.NamespaceSelectorAnnotationKey: "!!!invalid!!!"}
 						Expect(kube.Update(context, owner)).To(Succeed())
 					})
 
@@ -257,9 +259,9 @@ var (
 		})
 
 		annotations := map[string]string{
-			"unprotected-annotation": "true",
-			"protected-annotation": "true",
-			controller.AllNamespacesAnnotation: "true",
+			"unprotected-annotation":             "true",
+			"protected-annotation":               "true",
+			controller.NamespaceAllAnnotationKey: "true",
 		}
 
 		When("secret is created", func() {
@@ -300,9 +302,9 @@ var (
 
 					By("updating secret with another annotation", func() {
 						owner := owner.DeepCopy()
-						delete(owner.Annotations, controller.AllNamespacesAnnotation)
+						delete(owner.Annotations, controller.NamespaceAllAnnotationKey)
 
-						owner.Annotations[controller.NamespaceSelectorAnnotation] = "sync=secret"
+						owner.Annotations[controller.NamespaceSelectorAnnotationKey] = "sync=secret"
 						Expect(kube.Update(context, owner)).To(Succeed())
 					})
 

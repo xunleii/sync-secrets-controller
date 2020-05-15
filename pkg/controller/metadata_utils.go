@@ -10,31 +10,35 @@ import (
 )
 
 const (
-	prefixAnnotation            = "secret.sync.klst.pw"
-	AllNamespacesAnnotation     = prefixAnnotation + "/all-namespaces"
-	NamespaceSelectorAnnotation = prefixAnnotation + "/namespace-selector"
+	// syncing type annotations
+	NamespaceAllAnnotationKey      = "secret.sync.klst.pw/all-namespaces"
+	NamespaceSelectorAnnotationKey = "secret.sync.klst.pw/namespace-selector"
+
+	// origin annotations (based on the idea of github.com/appscode/kubed)
+	OriginNameLabelsKey      = "secret.sync.klst.pw/origin.name"
+	OriginNamespaceLabelsKey = "secret.sync.klst.pw/origin.namespace"
 )
 
 // listNamespacesFromAnnotations lists all namespaces based on the secret annotations.
 func listNamespacesFromAnnotations(ctx *Context, secret corev1.Secret) ([]string, error) {
 	var options []client.ListOption
 
-	allNamespaces, hasAllNamespace := secret.Annotations[AllNamespacesAnnotation]
-	namespaceSelector, hasNamespaceSelector := secret.Annotations[NamespaceSelectorAnnotation]
+	allNamespaces, hasAllNamespace := secret.Annotations[NamespaceAllAnnotationKey]
+	namespaceSelector, hasNamespaceSelector := secret.Annotations[NamespaceSelectorAnnotationKey]
 
 	var err error
 	switch {
 	case hasAllNamespace && hasNamespaceSelector:
-		err = AnnotationError{fmt.Errorf("annotation '%s' and '%s' cannot be used together", AllNamespacesAnnotation, NamespaceSelectorAnnotation)}
+		err = AnnotationError{fmt.Errorf("annotation '%s' and '%s' cannot be used together", NamespaceAllAnnotationKey, NamespaceSelectorAnnotationKey)}
 	case hasAllNamespace:
 		if strings.ToLower(allNamespaces) != "true" {
-			err = AnnotationError{fmt.Errorf("'%s' is not 'true'", AllNamespacesAnnotation)}
+			err = AnnotationError{fmt.Errorf("'%s' is not 'true'", NamespaceAllAnnotationKey)}
 		}
 	case hasNamespaceSelector:
 		var selector labels.Selector
 		selector, err = labels.Parse(namespaceSelector)
 		if err != nil {
-			err = AnnotationError{fmt.Errorf("failed to parse '%s': %w", NamespaceSelectorAnnotation, err)}
+			err = AnnotationError{fmt.Errorf("failed to parse '%s': %w", NamespaceSelectorAnnotationKey, err)}
 		} else {
 			options = append(options, client.MatchingLabelsSelector{Selector: selector})
 		}
@@ -70,8 +74,8 @@ func listNamespacesFromAnnotations(ctx *Context, secret corev1.Secret) ([]string
 // be copied to an owned secret. Theses protected fields are provided by the
 // end user.
 func excludeProtectedMetadata(ctx *Context, secret *corev1.Secret) *corev1.Secret {
-	delete(secret.Annotations, AllNamespacesAnnotation)
-	delete(secret.Annotations, NamespaceSelectorAnnotation)
+	delete(secret.Annotations, NamespaceAllAnnotationKey)
+	delete(secret.Annotations, NamespaceSelectorAnnotationKey)
 	for _, annotation := range ctx.ProtectedAnnotations {
 		delete(secret.Annotations, annotation)
 	}
