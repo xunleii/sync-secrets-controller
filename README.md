@@ -1,9 +1,9 @@
-# Secret synchronisation operator
+# Secret synchronisation controller
 
-[![GoReleaser Workflow](https://github.com/xunleii/sync-secrets-operator/workflows/GoReleaser/badge.svg)](https://github.com/xunleii/sync-secrets-operator/actions)
-[![Go test & linter Workflow](https://github.com/xunleii/sync-secrets-operator/workflows/Go%20-%20Test%20&%20Lint/badge.svg)](https://github.com/xunleii/sync-secrets-operator/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/xunleii/sync-secrets-operator)](https://goreportcard.com/report/github.com/xunleii/sync-secrets-operator)
-[![Go Version Card](https://img.shields.io/github/go-mod/go-version/xunleii/sync-secrets-operator)](go.mod)
+[![GoReleaser Workflow](https://github.com/xunleii/sync-secrets-controller/workflows/GoReleaser/badge.svg)](https://github.com/xunleii/sync-secrets-controller/actions)
+[![Go test & linter Workflow](https://github.com/xunleii/sync-secrets-controller/workflows/Go%20-%20Test%20&%20Lint/badge.svg)](https://github.com/xunleii/sync-secrets-controller/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/xunleii/sync-secrets-controller)](https://goreportcard.com/report/github.com/xunleii/sync-secrets-controller)
+[![Go Version Card](https://img.shields.io/github/go-mod/go-version/xunleii/sync-secrets-controller)](go.mod)
 
 ## Overview
 
@@ -13,10 +13,10 @@
 > create a new certificate, we need to create a new secret in B with the content of A. Moreover, because the original
 > secret can be updated, we always need to sync it to the namespace B, manually.
 
-That is why this operator exists. Thanks to annotations on a secret, it can automatically synchronise the secret over
-several namespaces.  *However, I do not recommend to use this operator for anything ;
+That is why this controller exists. Thanks to annotations on a secret, it can automatically synchronise the secret over
+several namespaces.  *However, I do not recommend to use this controller for anything ;
 [Kubernetes Secret's restrictions](https://kubernetes.io/docs/concepts/configuration/secret/#restrictions) are here
-for a good reason and this operator breaks one of theses restrictions.*
+for a good reason and this controller breaks one of theses restrictions.*
 
 ## Annotations
 
@@ -28,7 +28,7 @@ validating the given label selector
 
 ## Features
 
-**This operator can:**
+**This controller can:**
 
 - Synchronize a secret over all namespaces
 - Synchronize a secret on specifics namespaces, thanks label selectors
@@ -63,8 +63,8 @@ label selector, see [Kubernetes label selector](https://kubernetes.io/docs/conce
 You can install the deployment in a kubernetes cluster with the following commands
 
 ```bash
-kubectl apply -f https://github.com/xunleii/sync-secrets-operator/tree/master/deploy/rbac.yaml
-kubectl apply -f https://github.com/xunleii/sync-secrets-operator/tree/master/deploy/deployment.yaml
+kubectl apply -f https://github.com/xunleii/sync-secrets-controller/tree/master/deploy/rbac.yaml
+kubectl apply -f https://github.com/xunleii/sync-secrets-controller/tree/master/deploy/deployment.yaml
 ```
 
 ---

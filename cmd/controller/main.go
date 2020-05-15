@@ -10,12 +10,12 @@ import (
 	"github.com/prometheus/common/version"
 	kflag "k8s.io/component-base/cli/flag"
 
-	"github.com/xunleii/sync-secrets-operator/pkg/controller"
+	"github.com/xunleii/sync-secrets-controller/pkg/controller"
 )
 
 const (
-	controllerName       = "controller"
-	controllerNameMetric = "sync_secrets_operator"
+	controllerName       = "sync-secrets-controller"
+	controllerNameMetric = "sync_secrets_controller"
 )
 
 func main() {

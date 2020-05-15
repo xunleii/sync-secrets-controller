@@ -26,21 +26,21 @@
 - add internal secret registry
 
 ### Pull Requests
-- Merge pull request [#5](https://github.com/xunleii/sync-secrets-operator/issues/5) from xunleii/feat-sync-namespaces
-- Merge pull request [#4](https://github.com/xunleii/sync-secrets-operator/issues/4) from xunleii/refact-controller
+- Merge pull request [#5](https://github.com/xunleii/sync-secrets-controller/issues/5) from xunleii/feat-sync-namespaces
+- Merge pull request [#4](https://github.com/xunleii/sync-secrets-controller/issues/4) from xunleii/refact-controller
 
 
 <a name="v0.1.1"></a>
 ## [v0.1.1] - 2020-04-04
 ### Pull Requests
-- Merge pull request [#3](https://github.com/xunleii/sync-secrets-operator/issues/3) from xunleii/repo-remove-gorelease-dependency
+- Merge pull request [#3](https://github.com/xunleii/sync-secrets-controller/issues/3) from xunleii/repo-remove-gorelease-dependency
 
 
 <a name="v0.1.0"></a>
 ## [v0.1.0] - 2020-03-31
 ### Code Refactoring
 - clean CI files & removed old ones
-- rename controller to operator
+- rename controller to controller
 - clean controller manager
 
 ### Code Testing
@@ -58,7 +58,7 @@
 - POC sync-controller
 
 
-[Unreleased]: https://github.com/xunleii/sync-secrets-operator/compare/v0.2.0...HEAD
-[v0.2.0]: https://github.com/xunleii/sync-secrets-operator/compare/v0.1.1...v0.2.0
-[v0.1.1]: https://github.com/xunleii/sync-secrets-operator/compare/v0.1.0...v0.1.1
-[v0.1.0]: https://github.com/xunleii/sync-secrets-operator/compare/v0.0.0...v0.1.0
+[Unreleased]: https://github.com/xunleii/sync-secrets-controller/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/xunleii/sync-secrets-controller/compare/v0.1.1...v0.2.0
+[v0.1.1]: https://github.com/xunleii/sync-secrets-controller/compare/v0.1.0...v0.1.1
+[v0.1.0]: https://github.com/xunleii/sync-secrets-controller/compare/v0.0.0...v0.1.0

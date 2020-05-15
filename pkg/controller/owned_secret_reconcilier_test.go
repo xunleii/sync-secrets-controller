@@ -15,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/xunleii/sync-secrets-operator/pkg/controller"
-	registrypkg "github.com/xunleii/sync-secrets-operator/pkg/registry"
+	"github.com/xunleii/sync-secrets-controller/pkg/controller"
+	registrypkg "github.com/xunleii/sync-secrets-controller/pkg/registry"
 )
 
 var (

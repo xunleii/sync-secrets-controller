@@ -5,7 +5,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/xunleii/sync-secrets-operator/pkg/registry"
+	"github.com/xunleii/sync-secrets-controller/pkg/registry"
 )
 
 type (

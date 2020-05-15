@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/xunleii/sync-secrets-operator/pkg/registry"
+	"github.com/xunleii/sync-secrets-controller/pkg/registry"
 )
 
 const requeueAfter = 5 * time.Second
