@@ -69,6 +69,21 @@ func listNamespacesFromAnnotations(ctx *Context, secret corev1.Secret) ([]string
 	return namespaces, nil
 }
 
+// assignOriginMetadata assign to the secret some metadata that come from the
+// original secret.
+func assignOriginMetadata(secret, origin *corev1.Secret) *corev1.Secret {
+	if secret.Annotations == nil {
+		secret.Annotations = map[string]string{}
+	}
+	if secret.Labels == nil {
+		secret.Labels = map[string]string{}
+	}
+
+	secret.Labels[OriginNameLabelsKey] = origin.Name
+	secret.Labels[OriginNamespaceLabelsKey] = origin.Namespace
+	return secret
+}
+
 // excludeProtectedMetadata removes all protected labels or annotations from the
 // given secret. A protected labels (or annotations) is a labels which must not
 // be copied to an owned secret. Theses protected fields are provided by the
