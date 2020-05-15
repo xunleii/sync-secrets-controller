@@ -1,6 +1,9 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+
+<a name="v0.2.1"></a>
+## [v0.2.1] - 2020-05-15
 ### Code Testing
 - prepare tests for origin metadata
 - prepare tests for the protection feature
@@ -9,6 +12,10 @@
 - implements origin metadata
 - implements fields protection feature
 - add protected labels and annotation flags
+
+### Pull Requests
+- Merge pull request [#7](https://github.com/xunleii/sync-secrets-controller/issues/7) from xunleii/feat-add-origin-annotations
+- Merge pull request [#6](https://github.com/xunleii/sync-secrets-controller/issues/6) from xunleii/feat-ignore-metadata
 
 
 <a name="v0.2.0"></a>
@@ -67,7 +74,8 @@
 - POC sync-controller
 
 
-[Unreleased]: https://github.com/xunleii/sync-secrets-controller/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/xunleii/sync-secrets-controller/compare/v0.2.1...HEAD
+[v0.2.1]: https://github.com/xunleii/sync-secrets-controller/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/xunleii/sync-secrets-controller/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/xunleii/sync-secrets-controller/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/xunleii/sync-secrets-controller/compare/v0.0.0...v0.1.0
