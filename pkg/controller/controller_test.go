@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 }
 
 func FeatureContext(s *godog.Suite) {
-	featureContext, _ := kfc.FeatureContext(s, kfc.FakeClient)
+	featureContext, _ := kfc.FeatureContext(s, kfc.FakeClient, kfc.UseCustomGC(kfc.ManualGC))
 
 	s.Step("nothing occurs", func() error { return nil })
 

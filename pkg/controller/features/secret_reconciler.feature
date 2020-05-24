@@ -209,6 +209,5 @@ Feature: Secret synchronization on secret's updates
     When Kubernetes removes v1/Secret 'default/secret'
     And the secret reconciler reconciles 'default/secret'
     Then Kubernetes doesn't have v1/Secret 'default/secret'
-# TODO: Need GC on FakeClient
-#    And Kubernetes doesn't have v1/Secret 'kube-public/secret'
-#    And Kubernetes doesn't have v1/Secret 'kube-system/secret'
+    And Kubernetes doesn't have v1/Secret 'kube-public/secret'
+    And Kubernetes doesn't have v1/Secret 'kube-system/secret'

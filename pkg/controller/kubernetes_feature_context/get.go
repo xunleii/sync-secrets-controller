@@ -186,7 +186,7 @@ func ResourceIsNotEqualTo(ctx *KubernetesFeatureContext, s *godog.Suite) {
 	)
 }
 
-// get fetches a Kubernetes resource based on the give arguments.
+// get fetches a Kubernetes resource based on the given arguments.
 func (ctx *KubernetesFeatureContext) get(gvk, name string) (*unstructured.Unstructured, error) {
 	groupVersionKind, err := GroupVersionKindFrom(gvk)
 	if err != nil {

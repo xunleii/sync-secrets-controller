@@ -92,7 +92,7 @@ func CreateMultiResources(ctx *KubernetesFeatureContext, s *godog.Suite) {
 	)
 }
 
-// create creates a Kubernetes resource based on the give arguments.
+// create creates a Kubernetes resource based on the given arguments.
 func (ctx *KubernetesFeatureContext) create(gvk, name string, obj unstructured.Unstructured) error {
 	groupVersionKind, err := GroupVersionKindFrom(gvk)
 	if err != nil {
