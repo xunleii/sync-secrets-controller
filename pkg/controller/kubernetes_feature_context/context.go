@@ -78,6 +78,8 @@ func FeatureContext(s *godog.Suite, opts ...KubernetesFeatureContextOption) (*Ku
 	ResourceHasAnnotationNotEqual(ctx, s)
 
 	// List resources
+	CountResources(ctx, s)
+	CountNamespacedResources(ctx, s)
 
 	// Patch resources
 	PatchResourceWith(ctx, s)

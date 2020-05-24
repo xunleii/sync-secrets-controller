@@ -114,6 +114,9 @@ func ManualGC(ctx *KubernetesFeatureContext, delObj *unstructured.Unstructured) 
 
 		obj := unstructured.Unstructured{}
 		obj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(kobj.Interface().(runtime.Object))
+		if err != nil {
+			return err
+		}
 
 		items, _, err := unstructured.NestedSlice(obj.Object, "items")
 		if err != nil {
