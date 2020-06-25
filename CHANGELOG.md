@@ -1,6 +1,14 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Code Testing
+- remove old Ginko tests
+
+### Features
+- add some 'list' Step in KubernetesFeatureContext
+- implements manual GC on delete
+- implements FeatureContext for Kubernetes
+
 
 <a name="v0.2.1"></a>
 ## [v0.2.1] - 2020-05-15
