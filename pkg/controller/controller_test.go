@@ -48,11 +48,10 @@ func TestMain(m *testing.M) {
 }
 
 func InitializeScenario(s *godog.ScenarioContext) {
-	featureContext, _ := kubernetes_ctx.NewFeatureContext(s, kubernetes_ctx.WithFakeClient(scheme.Scheme))
-
 	var ctx *Context
 	var reconcilers = map[string]reconcile.Reconciler{}
 
+	featureContext, _ := kubernetes_ctx.NewFeatureContext(s, kubernetes_ctx.WithFakeClient(scheme.Scheme))
 	s.BeforeScenario(func(*messages.Pickle) {
 		ctx = NewContext(context.TODO(), featureContext.Client())
 		reconcilers["secret"] = &SecretReconciler{ctx}
