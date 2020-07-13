@@ -141,8 +141,13 @@ func SynchronizeSecret(ctx *Context, secret corev1.Secret) error {
 			continue
 		}
 
-		secret = template.DeepCopy()
-		secret.Namespace = namespace
+		secret.SetName(template.GetName())
+		secret.SetNamespace(namespace)
+		secret.SetLabels(template.GetLabels())
+		secret.SetAnnotations(template.GetAnnotations())
+		secret.SetOwnerReferences(template.GetOwnerReferences())
+		secret.StringData = template.StringData
+		secret.Data = template.Data
 
 		klog.V(3).Infof("update %T %s", secret, name)
 		if err = ctx.client.Update(ctx, secret); err != nil {
