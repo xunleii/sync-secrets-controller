@@ -1,7 +1,11 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Bug Fixes
+- avoid removing old metadata on update
+
 ### Code Testing
+- use external library for GoDog feature context
 - remove old Ginko tests
 
 ### Features
