@@ -10,16 +10,17 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/cucumber/godog/colors"
 	"github.com/cucumber/messages-go/v10"
+	kubernetes_ctx "github.com/xunleii/godog-kubernetes"
+	"github.com/xunleii/godog-kubernetes/helpers"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	kfc "github.com/xunleii/sync-secrets-controller/pkg/controller/kubernetes_feature_context"
 )
 
-var opt = godog.Options{Output: colors.Colored(os.Stdout)}
+var opts = godog.Options{Output: colors.Colored(os.Stdout)}
 
 func init() {
-	godog.BindFlags("godog.", flag.CommandLine, &opt)
+	godog.BindFlags("godog.", flag.CommandLine, &opts)
 
 	// Disable klog outputs
 	fset := flag.NewFlagSet("ignore_logs", flag.ExitOnError)
@@ -31,10 +32,13 @@ func init() {
 func TestMain(m *testing.M) {
 	// Parse flags and prepare godog
 	flag.Parse()
-	opt.Paths = flag.Args()
-	status := godog.RunWithOptions("godogs", func(s *godog.Suite) {
-		FeatureContext(s)
-	}, opt)
+	opts.Paths = flag.Args()
+
+	status := godog.TestSuite{
+		Name:                "sync-secrets-controller",
+		ScenarioInitializer: InitializeScenario,
+		Options:             &opts,
+	}.Run()
 
 	// Run godog
 	if st := m.Run(); st > status {
@@ -43,24 +47,24 @@ func TestMain(m *testing.M) {
 	os.Exit(status)
 }
 
-func FeatureContext(s *godog.Suite) {
-	featureContext, _ := kfc.FeatureContext(s, kfc.FakeClient, kfc.UseCustomGC(kfc.ManualGC))
-
-	s.Step("nothing occurs", func() error { return nil })
+func InitializeScenario(s *godog.ScenarioContext) {
+	featureContext, _ := kubernetes_ctx.NewFeatureContext(s, kubernetes_ctx.WithFakeClient(scheme.Scheme))
 
 	var ctx *Context
 	var reconcilers = map[string]reconcile.Reconciler{}
+
 	s.BeforeScenario(func(*messages.Pickle) {
-		ctx = NewContext(context.TODO(), featureContext.Client)
+		ctx = NewContext(context.TODO(), featureContext.Client())
 		reconcilers["secret"] = &SecretReconciler{ctx}
 		reconcilers["owned secret"] = &OwnedSecretReconcilier{ctx}
 		reconcilers["namespace"] = &NamespaceReconciler{ctx}
 	})
 
+	s.Step("nothing occurs", func() error { return nil })
 	s.Step(
-		`^the (secret|owned secret|namespace) reconciler reconciles '(`+kfc.RxNamespacedName+`)'$`,
+		`^the (secret|owned secret|namespace) reconciler reconciles '(`+kubernetes_ctx.RxNamespacedName+`)'$`,
 		func(reconciler, name string) error {
-			target, err := kfc.NamespacedNameFrom(name)
+			target, err := helpers.NamespacedNameFrom(name)
 			if err != nil {
 				return err
 			}
