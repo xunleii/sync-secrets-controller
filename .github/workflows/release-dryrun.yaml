@@ -22,19 +22,19 @@ jobs:
       run: |
         export TAG=$(git describe --abbrev=0 --tags)
 
-        echo ::set-env name=version::${TAG}
-        echo ::set-env name=branch::$(git rev-parse --abbrev-ref HEAD)
-        echo ::set-env name=date::$(date --rfc-3339=seconds | sed 's/ /T/')
+        echo "version=${TAG}" >> ${GITHUB_ENV}
+        echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> ${GITHUB_ENV}
+        echo "date=$(date --rfc-3339=seconds | sed 's/ /T/')" >> ${GITHUB_ENV}
 
         export OSARCH=${{matrix.arch}}
-        echo ::set-env name=ARCH::${OSARCH%:*}
+        echo "ARCH=${OSARCH%:*}" >> ${GITHUB_ENV}
 
         export OSARCH=${OSARCH#*:}
-        echo ::set-env name=GOOS::${OSARCH%/*}
-        echo ::set-env name=GOARCH::${OSARCH#*/}
+        echo "GOOS=${OSARCH%/*}" >> ${GITHUB_ENV}
+        echo "GOARCH=${OSARCH#*/}" >> ${GITHUB_ENV}
 
         if [[ "${OSARCH}" == "arm32v7:linux/arm" ]]; then
-          echo ::set-env name=GOARM::v7
+          echo "GOARM=v7" >> ${GITHUB_ENV}
         fi
     - name: Download dependencies
       run: go mod download
